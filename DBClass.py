@@ -1,6 +1,6 @@
 import traceback
 from datetime import datetime
-from typing import Union
+from typing import Optional
 
 import aiofiles
 import aiomysql
@@ -10,7 +10,7 @@ from settings import host, base_user, base_pass, base_charset, product_server, l
 
 class DBClass:
     def __init__(self):
-        self.connection: Union[aiomysql.Pool, None] = None
+        self.connection: Optional[aiomysql.Pool] = None
 
     async def mysql_connect(self, base):
         self.connection = await aiomysql.create_pool(host=host,
