@@ -5,6 +5,8 @@ from typing import Union
 import aiofiles
 import aiomysql
 
+from settings import host, base_user, base_pass, base_charset, product_server, log_dir
+
 
 class DBClass:
     def __init__(self):
