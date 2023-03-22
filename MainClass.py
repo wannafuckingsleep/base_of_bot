@@ -143,6 +143,36 @@ class Main:
     async def on_shutdown(self):
         await self.mysql_disconnect()
 
+    async def get_chat_settings(self, peer_id: int, db: DBClass = None, thread_id=None, is_forum=None) -> Chat:
+        if not await self.is_chat(peer_id):
+            return Chat(peer_id, thread_id=None, safe_name=False, delete_message=-1, start_date=datetime.now())
+        if db is None:
+            db = self.db
+        chat = await db.execute("SELECT * FROM chat WHERE peer_id = %s", (peer_id,), fetchone=True)
+        if chat is None:
+            toads = await db.execute("SELECT id FROM jaby WHERE peerid = %s limit 1", (peer_id,), fetchone=True)
+            if toads is None:
+                time = datetime.now()
+            else:
+                time = datetime.now() - timedelta(hours=self.infinity_toads_time + 1)
+
+            await db.execute("INSERT INTO chat SET peer_id = %s, start_date = %s",
+                             (peer_id, time), commit=True)
+            chat = await db.execute("SELECT * FROM chat WHERE peer_id = %s", (peer_id,), fetchone=True)
+        if is_forum:
+            if chat['thread_id'] != thread_id:
+                await db.execute("UPDATE chat SET thread_id = %s WHERE peer_id = %s", (thread_id, peer_id), commit=True)
+                chat['thread_id'] = thread_id
+        elif is_forum is False and chat['thread_id']:
+            await db.execute("UPDATE chat SET thread_id = NULL WHERE peer_id = %s", (peer_id,), commit=True)
+            chat['thread_id'] = None
+
+        return Chat(
+            peer_id, thread_id=chat['thread_id'], safe_name=chat['safe_name'], delete_message=chat['delete_message'],
+            start_date=chat['start_date'], toad=chat['toad'], message_id=chat['message_id'], sending=chat['sending'],
+            inactive_days=chat['inactive_days']
+        )
+
     @abstractmethod  # Отправляем сообщение
     async def send_message(self, message: Message):
         ...
@@ -174,6 +204,10 @@ class Main:
     def platform(self):  # TODO Название платформы, нужно в будущем отказаться
         pass
 
+    @abstractmethod
+    async def is_chat(self, peer_id) -> bool:
+        ...
+
     @classmethod
     async def write_log(cls, filename, error_text, need_print=False):  # Запись лога об ошибке
         if need_print or not product_server:
@@ -184,22 +218,46 @@ class Main:
                 await file.write(error_text)
                 await file.flush()
 
+    # Перемещаем чат
+    async def chat_migrate(self, from_chat_id, to_chat_id):
+        await self.db.execute("""
+            UPDATE chat SET chat_id = %s WHERE chat_id = %s;
+        """, (
+            to_chat_id, from_chat_id
+        ), commit=True)
+
+    # Обработка ошибок отправки сообщений
+    # TODO Вынести текст сообщения про ошибки в свойства класса, оставить только общую функцию
+    async def write_msg_errors(self, err, peer_id):
+        err = "{0}".format(err)
+        # Бота кикнули, запретили ему присылать фото и т.д.
+        if (err.find('bot was kicked from the') >= 0 or err.find('chat was deactivated') >= 0
+                or err.find('bot is not a member') >= 0 or err.find('no rights to send') >= 0
+                or err.find('enough rights to send photos') >= 0
+                or err.find('Chat not found') >= 0
+                or err == '7' or err == '945'):
+            return 'kicked'
+        else:
+            # Неизвестная пока для нас ошибка.
+            # Может нужно лог завести, чтобы все возникающие ошибки обработать
+            return 'unknown'
+
     # Добавляем сообщение в очередь на удаление
-    async def message_for_delete(self, message_id, peer_id):
+    async def message_for_delete(self, message_id, chat_id):
         await self.delete_queue.put(
-            {'peer_id': peer_id, 'message': message_id, 'platform': self.platform, 'date': datetime.now()})
+            {'chat_id': chat_id, 'message': message_id, 'platform': self.platform, 'date': datetime.now()})
 
     # Поток раз в 1.5 минут получает чаты, подписанные на удаление
     async def get_subscribed_chats(self):
         while True:
             try:
-                rows = await self.db.execute("SELECT delete_message, peer_id FROM chat WHERE delete_message != -1",
+                rows = await self.db.execute("SELECT delete_message, chat_id FROM chat WHERE delete_message != -1",
                                              fetchall=True)
                 self.subscribed_chats.clear()
                 for row in rows:
-                    peer_id = row['peer_id']
+                    chat_id = row['chat_id']
                     time = row['delete_message']
-                    self.subscribed_chats[peer_id] = time
+                    self.subscribed_chats[chat_id] = time
                 del rows
                 await asyncio.sleep(100)
             except CancelledError:
@@ -213,9 +271,9 @@ class Main:
         while True:
             try:
                 event = await self.delete_queue.get()  # comment event
-                peer_id = event['peer_id']
-                if peer_id in self.subscribed_chats:
-                    event['time'] = self.subscribed_chats.copy()[peer_id]
+                chat_id = event['chat_id']
+                if chat_id in self.subscribed_chats:
+                    event['time'] = self.subscribed_chats.copy()[chat_id]
                     message_id = event['message']
                     self.need_delete[message_id] = event
             except CancelledError:
@@ -230,14 +288,14 @@ class Main:
                 if len(self.need_delete) > 0:
                     for key in list(self.need_delete):
                         event = self.need_delete[key]
-                        peer_id = event['peer_id']
+                        chat_id = event['chat_id']
                         date = event['date']
                         message_id = event['message']
                         minute = event['time']
                         today = datetime.now()
                         if today - timedelta(minutes=minute) >= date:
                             await self.delete_message(
-                                Message(peer_id, message="", message_id=message_id)
+                                Message(chat_id, message="", message_id=message_id)
                             )
                             self.need_delete.pop(message_id)
 
