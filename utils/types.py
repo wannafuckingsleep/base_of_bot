@@ -37,7 +37,7 @@ class Event:
             attachment: Optional[str] = None,
             reply_from: Optional[int] = None,
             message_id: Optional[int] = None,
-            callback_id: Optional[int] = None,
+            callback_id: Optional[int, str] = None,
             destination: Optional[int] = None,
             is_bot: bool = None,
             chat: Optional[Chat] = None,
@@ -80,7 +80,7 @@ class Message:
                  dont_parse_links: int = 1,
                  need_delete: bool = True,
                  message_id: Optional[int] = None,
-                 callback_id: Optional[int] = None,
+                 callback_id: Optional[int, str] = None,
                  ):
         self.chat_id = chat_id
         self.message = message
