@@ -143,56 +143,43 @@ class Main:
     async def on_shutdown(self):
         await self.mysql_disconnect()
 
-    async def get_chat_settings(self, peer_id: int, db: DBClass = None, thread_id=None, is_forum=None) -> Chat:
-        if not await self.is_chat(peer_id):
-            return Chat(peer_id, thread_id=None, safe_name=False, delete_message=-1, start_date=datetime.now())
+    async def get_chat_settings(self, chat_id: int, db: DBClass = None, thread_id=None, is_forum=None) -> Chat:
+        if not await self.is_chat(chat_id):
+            return Chat(chat_id, thread_id=None, delete_message=-1, start_date=datetime.now())
         if db is None:
             db = self.db
-        chat = await db.execute("SELECT * FROM chat WHERE peer_id = %s", (peer_id,), fetchone=True)
+        chat = await db.execute("SELECT * FROM chat WHERE chat_id = %s", (chat_id,), fetchone=True)
         if chat is None:
-            toads = await db.execute("SELECT id FROM jaby WHERE peerid = %s limit 1", (peer_id,), fetchone=True)
-            if toads is None:
-                time = datetime.now()
-            else:
-                time = datetime.now() - timedelta(hours=self.infinity_toads_time + 1)
-
-            await db.execute("INSERT INTO chat SET peer_id = %s, start_date = %s",
-                             (peer_id, time), commit=True)
-            chat = await db.execute("SELECT * FROM chat WHERE peer_id = %s", (peer_id,), fetchone=True)
+            await db.execute("INSERT INTO chat SET chat_id = %s, start_date = %s",
+                             (chat_id, datetime.now()), commit=True)
+            chat = await db.execute("SELECT * FROM chat WHERE chat_id = %s", (chat_id,), fetchone=True)
         if is_forum:
             if chat['thread_id'] != thread_id:
-                await db.execute("UPDATE chat SET thread_id = %s WHERE peer_id = %s", (thread_id, peer_id), commit=True)
+                await db.execute("UPDATE chat SET thread_id = %s WHERE chat_id = %s", (thread_id, chat_id), commit=True)
                 chat['thread_id'] = thread_id
         elif is_forum is False and chat['thread_id']:
-            await db.execute("UPDATE chat SET thread_id = NULL WHERE peer_id = %s", (peer_id,), commit=True)
+            await db.execute("UPDATE chat SET thread_id = NULL WHERE chat_id = %s", (chat_id,), commit=True)
             chat['thread_id'] = None
 
         return Chat(
-            peer_id, thread_id=chat['thread_id'], safe_name=chat['safe_name'], delete_message=chat['delete_message'],
-            start_date=chat['start_date'], toad=chat['toad'], message_id=chat['message_id'], sending=chat['sending'],
-            inactive_days=chat['inactive_days']
+            chat_id, thread_id=chat['thread_id'], delete_message=chat['delete_message'], start_date=chat['start_date']
         )
 
     @abstractmethod  # Отправляем сообщение
-    async def send_message(self, message: Message):
-        ...
+    async def send_message(self, message: Message): ...
 
     @abstractmethod  # Удаляем сообщение
-    async def delete_message(self, message: Message):
-        ...
+    async def delete_message(self, message: Message): ...
 
     @abstractmethod  # Правка сообщения
-    async def edit_message(self, message: Message):
-        ...
+    async def edit_message(self, message: Message): ...
 
     @abstractmethod  # Callback ответ
-    async def callback_message(self, message: Message, alert=True):
-        ...
+    async def callback_message(self, message: Message, alert=True): ...
 
     @classmethod
     @abstractmethod
-    async def get_message_id(cls, message) -> Optional[int]: # Получение ID отправленного сообщения
-        ...
+    async def get_message_id(cls, message) -> Optional[int]: ...  # Получение ID отправленного сообщения
 
     @property
     @abstractmethod
@@ -205,17 +192,17 @@ class Main:
         pass
 
     @abstractmethod
-    async def is_chat(self, peer_id: int) -> bool:
-        ...
+    async def is_chat(self, chat_id: int) -> bool: ...
 
     @abstractmethod
     # Получение юзера человека, с которым нужно будет взаимодействовать
-    async def get_destination(self, param, reply_from):
-        ...
+    async def get_destination(self, param, reply_from): ...
 
     @abstractmethod
-    async def is_admin(self, user_id: int, peer_id: int) -> bool:  # Является ли пользователь админом
-        ...
+    async def is_admin(self, user_id: int, chat_id: int) -> bool: ...  # Является ли пользователь админом
+    
+    @abstractmethod
+    async def get_name(self, user_id: int, chat_id: int) -> Optional[str]: ...
 
     @classmethod
     async def write_log(cls, filename, error_text, need_print=False):  # Запись лога об ошибке
@@ -237,7 +224,7 @@ class Main:
 
     # Обработка ошибок отправки сообщений
     # TODO Вынести текст сообщения про ошибки в свойства класса, оставить только общую функцию
-    async def write_msg_errors(self, err, peer_id):
+    async def write_msg_errors(self, err, chat_id):
         err = "{0}".format(err)
         # Бота кикнули, запретили ему присылать фото и т.д.
         if (err.find('bot was kicked from the') >= 0 or err.find('chat was deactivated') >= 0
