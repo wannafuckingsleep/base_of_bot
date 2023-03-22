@@ -24,6 +24,7 @@ class TgClass(Commands):
     webhook_port = (5001, 5000)  # 5000 - для тестового бота, 5001 - для основного бота
 
     admins = (177237242, )  # ID админов
+    bot_id = (1124824021, 1137923067)  # Первый - основной бот, второй - тестовый
 
     def __init__(self):
         super().__init__()  # Вызов конструктора класса родителя
@@ -252,4 +253,57 @@ class TgClass(Commands):
             if i.user.id == user:
                 return True
         return False
+
+    async def get_name(self, user_id: int, chat_id: int,
+                       ping: bool = False,
+                       special_name: Optional[str] = None) -> Optional[str]:
+        if ping:  # Если нужно упоминание
+            if special_name:
+                return await self.make_link(special_name, await self.link_to_user(user_id))
+            else:
+                user = await self.bot.get_chat_member(chat_id, user_id)
+                return await self.escape_string(user.user.first_name)
+        else:
+            user = await self.bot.get_chat_member(chat_id, user_id)
+            return await self.escape_string(user.user.first_name)
+
+    async def escape_string(self, s) -> str:  # Экранирование строки
+        return md.quote_html(s)
+
+    @staticmethod
+    async def make_link(title, link):  # Формируем ссылку
+        return md.hlink(title, link)
+
+    @staticmethod
+    async def link_to_user(user_id):  # Получаем ссылку на пользователя
+        return f'tg://user?id={user_id}'
+
+    @staticmethod
+    async def bold(s):  # Делаем текст жирным
+        return md.hbold(s)
+
+    @staticmethod
+    async def italic(s):  # Делаем текст курсивом
+        return md.hitalic(s)
+
+    @staticmethod
+    async def underline(s):  # Делаем текст подчеркнутым
+        return md.hunderline(s)
+
+    @staticmethod
+    async def code(s):  # Делаем текст monospace
+        return md.hcode(s)
+
+    async def get_attachment_id(self, event, need_all=False):  # Получаем id вложения
+        file_id = None
+        if hasattr(event.reply_to_message, 'photo') and event.reply_to_message.photo:
+            if need_all:
+                file_id = ''
+                for photo in event.reply_to_message.photo:
+                    file_id += photo.file_id + '\n'
+            else:
+                file_id = event.reply_to_message.photo[-1].file_id
+        if event.reply_to_message.document is not None:
+            file_id = event.reply_to_message.document.file_id
+        return file_id
 
