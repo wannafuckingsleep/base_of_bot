@@ -237,3 +237,19 @@ class TgClass(Commands):
             return True
         return False
 
+    # Получение юзера человека, с которым нужно будет взаимодействовать
+    async def get_destination(self, param, reply_from):
+        if reply_from is not None:
+            return reply_from
+        else:
+            return None
+
+    async def is_admin(self, user, peer_id):  # Является ли пользователь админом
+        if user == 1087968824:  # Анонимка в чате
+            return True
+        adm = await self.bot.get_chat_administrators(peer_id)
+        for i in adm:
+            if i.user.id == user:
+                return True
+        return False
+

@@ -205,7 +205,16 @@ class Main:
         pass
 
     @abstractmethod
-    async def is_chat(self, peer_id) -> bool:
+    async def is_chat(self, peer_id: int) -> bool:
+        ...
+
+    @abstractmethod
+    # Получение юзера человека, с которым нужно будет взаимодействовать
+    async def get_destination(self, param, reply_from):
+        ...
+
+    @abstractmethod
+    async def is_admin(self, user_id: int, peer_id: int) -> bool:  # Является ли пользователь админом
         ...
 
     @classmethod
