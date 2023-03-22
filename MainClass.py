@@ -12,6 +12,8 @@ import aiofiles
 
 from utils.keyboards import Keyboard
 from utils.types import *
+from typing import Union
+import aiohttp
 from settings import product_server, log_dir
 from migrations import check_migrations
 
@@ -118,6 +120,69 @@ class Main:
             return False, False
         else:
             return False, False
+        
+    async def execute_command(self, event: Event, extra: dict, log: str):
+        message: Optional[Message, list[Message]] = None
+        event.chat = await self.get_chat_settings(
+            chat_id=event.chat_id,
+            thread_id=event.thread_id,
+            is_forum=event.is_forum
+        )
+        try:
+            if 'lock' in extra:
+                try:
+                    if event.chat_id in extra['lock']['queue']:
+                        message = Message(event.chat_id, extra['lock']['message'])
+                    else:
+                        try:
+
+                            extra['lock']['queue'][event.chat_id] = True
+                            if 'extra_params' in extra:
+                                message = await extra['func'](event, extra['extra_params'])
+                            else:
+                                message = await extra['func'](event)
+                        except:
+                            await self.write_log(log, "\n"
+                                                      "_" * 25 + f'\n{datetime.now()}\n'
+                                                                 f'{event.__dict__}\n'
+                                                                 f'{traceback.format_exc()}')
+                        finally:
+                            if event.chat_id in extra['lock']['queue']:
+                                extra['lock']['queue'].pop(event.chat_id)  # Разблокируем команды очереди
+                except:
+                    await self.write_log(log, "\n"
+                                              "_" * 25 + f'\n{datetime.now()}\n'
+                                                         f'{event.__dict__}\n'
+                                                         f'{traceback.format_exc()}')
+            else:
+                if 'extra_params' in extra:
+                    message = await extra['func'](event, extra['extra_params'])
+                else:
+                    message = await extra['func'](event)
+            if message:
+                if type(message) == list:
+                    for current_message in message:
+                        if type(current_message) == Message:
+                            if event.chat_id == current_message.chat_id:
+                                current_message.chat = event.chat
+                            await self.send_message(current_message)
+                            await asyncio.sleep(0.1)
+                else:
+                    if type(message) == Message:
+                        if event.chat_id == message.chat_id:
+                            message.chat = event.chat
+                        await self.send_message(message)
+        except:
+            result = ""
+            if message is not None:
+                if type(message) == list:
+                    for i in message:
+                        result += f"\n\n{i.__dict__}"
+                else:
+                    result += f"\n\n{message.__dict__}"
+
+            await self.write_log(log, "_" * 25 +
+                                 f"\n{event.__dict__}{result}\n" + traceback.format_exc() + "_" * 25)
 
     async def on_startup(self):  # Асинхронная функция, выполняющаяся перед стартом получения апдейтов
         self.delete_queue = asyncio.Queue()
@@ -200,9 +265,43 @@ class Main:
 
     @abstractmethod
     async def is_admin(self, user_id: int, chat_id: int) -> bool: ...  # Является ли пользователь админом
-    
+
     @abstractmethod
-    async def get_name(self, user_id: int, chat_id: int) -> Optional[str]: ...
+    async def escape_string(self, s: str) -> str: ...  # Экранирование строки
+
+    @staticmethod
+    @abstractmethod
+    async def make_link(title: str, link): ...  # Формируем ссылку
+
+    @staticmethod
+    @abstractmethod
+    async def link_to_user(user_id: int): ...  # Получаем ссылку на пользователя
+
+    @staticmethod
+    @abstractmethod
+    async def bold(s): ...  # Делаем текст жирным
+
+    @staticmethod
+    @abstractmethod
+    async def italic(s): ...  # Делаем текст курсивом
+
+    @staticmethod
+    @abstractmethod
+    async def underline(s): ...  # Делаем текст подчеркнутым
+
+    @staticmethod
+    @abstractmethod
+    async def code(s): ...  # Делаем текст monospace
+
+    @abstractmethod
+    async def get_name(self, user_id: int, chat_id: int,
+                       ping: bool = False,
+                       special_name: Optional[str] = None) -> Optional[str]:
+        if not ping and special_name:
+            return special_name
+
+    @abstractmethod
+    async def get_attachment_id(self, event, need_all=False): ...  # Получаем id вложения
 
     @classmethod
     async def write_log(cls, filename, error_text, need_print=False):  # Запись лога об ошибке
@@ -300,3 +399,18 @@ class Main:
                 raise
             except:
                 await Main.write_log('delete_message_log', traceback.format_exc())
+
+    @staticmethod
+    async def download_file(url: str) -> Union[bytes, bool]:
+        """
+        Download file
+
+        :param url: address of file
+        :return: False or bytes
+        """
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    return await resp.read()
+                else:
+                    return False
