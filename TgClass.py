@@ -232,8 +232,8 @@ class TgClass(Commands):
         else:
             return None
 
-    async def is_chat(self, peer_id):
-        if peer_id < 0:
+    async def is_chat(self, chat_id):
+        if chat_id < 0:
             return True
         return False
 
@@ -244,10 +244,10 @@ class TgClass(Commands):
         else:
             return None
 
-    async def is_admin(self, user, peer_id):  # Является ли пользователь админом
+    async def is_admin(self, user, chat_id):  # Является ли пользователь админом
         if user == 1087968824:  # Анонимка в чате
             return True
-        adm = await self.bot.get_chat_administrators(peer_id)
+        adm = await self.bot.get_chat_administrators(chat_id)
         for i in adm:
             if i.user.id == user:
                 return True
