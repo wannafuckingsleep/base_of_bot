@@ -159,6 +159,11 @@ class Main:
     async def callback_message(self, message: Message, alert=True):
         ...
 
+    @classmethod
+    @abstractmethod
+    async def get_message_id(cls, message) -> Optional[int]: # Получение ID отправленного сообщения
+        ...
+
     @property
     @abstractmethod
     def base(self):  # Имя БД
