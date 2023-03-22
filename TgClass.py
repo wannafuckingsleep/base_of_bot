@@ -15,7 +15,7 @@ from utils.types import Event, Message
 class TgClass(Commands):
 
     platform = "tg"
-    base = ('base_of_bot', 'test_base_of_bot')  # Название БД. Вторая база - для тестового бота
+    base = ('base_of_bot', 'base_of_bot')  # Название БД. Вторая база - для тестового бота
 
     webhook_host = ""  # При необходимости, добавить вебхук
     webhook_path = f'/{platform_tokens["tg"]}'
@@ -30,7 +30,7 @@ class TgClass(Commands):
         super().__init__()  # Вызов конструктора класса родителя
         product_index = 0 if product_server else 1
         self.webhook_port = self.webhook_port[product_index]
-
+        self.base = self.base[product_index]
         self.bot = Bot(platform_tokens['tg'], parse_mode=types.ParseMode.HTML)
         self.dp = Dispatcher(self.bot, run_tasks_by_default=True)
         self.distribute_commands()
@@ -104,30 +104,30 @@ class TgClass(Commands):
 
     async def send_message(self, message: Message, send_long_message=True):
         if message is not None:
-            if message.chat is None:
-                message.chat = await self.get_chat_settings(message.chat_id)
+            if message.current_chat is None:
+                message.current_chat = await self.get_chat_settings(message.chat_id)
             try:
                 if message.attachment is None:
                     msg = await self.bot.send_message(
                         message.chat_id, message.message, reply_markup=message.keyboard,
-                        disable_web_page_preview=True, message_thread_id=message.chat.thread_id
+                        disable_web_page_preview=True, message_thread_id=message.current_chat.thread_id
                     )
                 else:
-                    if message.message_type == 'photo' or message.message_type is None:
+                    if message.message_type == 'photo' or message.message_type == "text":
                         try:
                             msg = await self.bot.send_photo(
                                 message.chat_id, message.attachment, caption=message.message,
-                                reply_markup=message.keyboard, message_thread_id=message.chat.thread_id
+                                reply_markup=message.keyboard, message_thread_id=message.current_chat.thread_id
                             )
                         except:
                             msg = await self.bot.send_animation(
                                 message.chat_id, message.attachment, caption=message.message,
-                                reply_markup=message.keyboard, message_thread_id=message.chat.thread_id
+                                reply_markup=message.keyboard, message_thread_id=message.current_chat.thread_id
                             )
                     else:  # message.message_type == 'gif':
                         msg = await self.bot.send_animation(
                             message.chat_id, message.attachment, caption=message.message,
-                            reply_markup=message.keyboard, message_thread_id=message.chat.thread_id
+                            reply_markup=message.keyboard, message_thread_id=message.current_chat.thread_id
                         )
                 if message.need_delete and message.chat_id in self.subscribed_chats:  # TODO вынести в общий метод
                     message_id = await self.get_message_id(msg)

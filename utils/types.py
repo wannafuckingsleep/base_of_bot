@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from datetime import datetime
 from vkbottle import Keyboard as VkKeyboard
 from aiogram.types import InlineKeyboardMarkup
@@ -37,7 +37,7 @@ class Event:
             attachment: Optional[str] = None,
             reply_from: Optional[int] = None,
             message_id: Optional[int] = None,
-            callback_id: Optional[int, str] = None,
+            callback_id: Union[int, str, None] = None,
             destination: Optional[int] = None,
             is_bot: bool = None,
             chat: Optional[Chat] = None,
@@ -65,14 +65,13 @@ class Event:
 
 
 class Message:
-
     def __init__(self,
                  chat_id: int,
                  message: str,
                  current_chat: Optional[Chat] = None,
                  thread_id: Optional[int] = None,
                  attachment: Optional[str] = None,
-                 keyboard: Optional[list, InlineKeyboardMarkup, VkKeyboard] = None,
+                 keyboard: Union[list, InlineKeyboardMarkup, VkKeyboard, None] = None,
                  ping: bool = False,
                  message_type: str = "text",
                  need_log: bool = True,
@@ -80,7 +79,7 @@ class Message:
                  dont_parse_links: int = 1,
                  need_delete: bool = True,
                  message_id: Optional[int] = None,
-                 callback_id: Optional[int, str] = None,
+                 callback_id: Union[int, str, None] = None,
                  ):
         self.chat_id = chat_id
         self.message = message

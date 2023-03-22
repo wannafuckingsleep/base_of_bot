@@ -12,7 +12,7 @@ class Commands(
 
             "message_commands": (
                 {
-                    "message": "начать",  # Важно прописывать все в нижнем регистре
+                    "message": ("начать", "/start"),  # Важно прописывать все в нижнем регистре
                     "func": self.example_func_without_params_with_extra,
                     "lock": self.command_lock,  # Необязательный параметр
                     "extra_params": "help param",  # Необязательный параметр

@@ -1,5 +1,4 @@
 from abc import ABC
-import asyncio
 import nest_asyncio
 from MainClass import Main
 from utils.types import *
@@ -13,8 +12,8 @@ class MainFunctions(Main, ABC):
         await self.send_message(
             Message(
                 event.chat_id,
-                "message from user_id: " + str(event.user_id) + "\n" +
-                "this is extra_param:" + extra
+                await self.bold("message from user_id: ") + str(event.user_id) + "\n" +
+                await self.bold("this is extra_param: ") + extra
             )
         )
 
@@ -22,8 +21,8 @@ class MainFunctions(Main, ABC):
         await self.send_message(
             Message(
                 event.chat_id,
-                "message from user_id: " + str(event.user_id) + "\n" +
-                "this is params:" + event.param
+                await self.bold("message from user_id: ") + str(event.user_id) + "\n" +
+                await self.bold("this is params: ") + event.param
             )
         )
 
@@ -31,8 +30,8 @@ class MainFunctions(Main, ABC):
         await self.send_message(
             Message(
                 event.chat_id,
-                "message from user_id: " + str(event.user_id) + "\n" +
-                "this is ID of attachment" + str(event.attachment),
+                await self.bold("message from user_id: ") + str(event.user_id) + "\n" +
+                await self.bold("this is ID of attachment: ") + str(event.attachment),
                 attachment=event.attachment
             )
         )
@@ -41,8 +40,8 @@ class MainFunctions(Main, ABC):
         await self.send_message(
             Message(
                 event.chat_id,
-                "I received a reply from user_id: " + str(event.user_id) + "\n" +
-                "Reply: " + str(event.reply_from)
+                await self.bold("I received a reply from user_id: ") + str(event.user_id) + "\n" +
+                await self.bold("Reply: ") + str(event.reply_from)
             )
         )
 
@@ -50,8 +49,8 @@ class MainFunctions(Main, ABC):
         await self.callback_message(
             Message(
                 event.chat_id,
-                "I received a reply from user_id: " + str(event.user_id) + "\n" +
-                "CallbackID: " + str(event.callback_id),
+                await self.bold("I received a reply from user_id: ") + str(event.user_id) + "\n" +
+                await self.bold("CallbackID: ") + str(event.callback_id),
                 callback_id=event.callback_id
             )
         )
@@ -60,9 +59,9 @@ class MainFunctions(Main, ABC):
         await self.callback_message(
             Message(
                 event.chat_id,
-                "I received a reply from user_id: " + str(event.user_id) + "\n" +
-                "CallbackID: " + str(event.callback_id) + "\n" +
-                "params: " + event.param,
+                await self.bold("I received a reply from user_id: ") + str(event.user_id) + "\n" +
+                await self.bold("CallbackID: ") + str(event.callback_id) + "\n" +
+                await self.bold("params: ") + event.param,
                 callback_id=event.callback_id
             )
         )
