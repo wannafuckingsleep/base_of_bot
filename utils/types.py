@@ -80,6 +80,7 @@ class Message:
                  need_delete: bool = True,
                  message_id: Optional[int] = None,
                  callback_id: Union[int, str, None] = None,
+                 user_id: Optional[int] = None,
                  ):
         self.chat_id = chat_id
         self.message = message
@@ -96,3 +97,5 @@ class Message:
         self.need_delete = need_delete
         self.message_id = message_id
         self.callback_id = callback_id
+
+        self.user_id = user_id
