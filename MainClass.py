@@ -78,7 +78,7 @@ class Main:
     # Проверяем, есть ли сообщение в списке команд бота
     @staticmethod
     async def check_event_in_commands(event, command_list, with_params=False,
-                                      clean_event_text: str = None):  # -> Union[tuple[Event, dict], tuple[bool, bool]]:
+                                      clean_event_text: str = None) -> Union[tuple[Event, dict], tuple[bool, bool]]:
         for command in command_list:
             command_message = command['message']
             if with_params:
@@ -296,9 +296,7 @@ class Main:
     @abstractmethod
     async def get_name(self, user_id: int, chat_id: int,
                        ping: bool = False,
-                       special_name: Optional[str] = None) -> Optional[str]:
-        if not ping and special_name:
-            return special_name
+                       special_name: Optional[str] = None) -> Optional[str]: ...
 
     @abstractmethod
     async def get_attachment_id(self, event, need_all=False): ...  # Получаем id вложения
