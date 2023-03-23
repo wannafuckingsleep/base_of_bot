@@ -65,3 +65,11 @@ class MainFunctions(Main, ABC):
                 callback_id=event.callback_id
             )
         )
+
+    @staticmethod
+    async def is_int(s):  # Проверка целочисленности
+        try:
+            s = int(s)
+            return s
+        except:
+            return False
