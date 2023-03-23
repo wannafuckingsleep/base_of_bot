@@ -257,6 +257,8 @@ class TgClass(Commands):
     async def get_name(self, user_id: int, chat_id: int,
                        ping: bool = False,
                        special_name: Optional[str] = None) -> Optional[str]:
+        if not ping and special_name:
+            return special_name
         if ping:  # Если нужно упоминание
             if special_name:
                 return await self.make_link(special_name, await self.link_to_user(user_id))
