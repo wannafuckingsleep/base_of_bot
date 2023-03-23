@@ -1,13 +1,12 @@
 # example of platform class based on TG
 import asyncio
-import random
 import traceback
-from typing import Union, Optional, Literal
+from typing import Optional
 
 from aiogram import Bot, Dispatcher, executor, types, md
-from aiogram.utils import exceptions, deep_linking
+from aiogram.utils import exceptions
 
-from CommandClass import Commands
+from bot.classes.CommandClass import Commands
 from settings import platform_tokens, product_server
 from utils.types import Event, Message
 

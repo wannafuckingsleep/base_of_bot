@@ -1,7 +1,7 @@
 from abc import ABC
 import nest_asyncio
-from MainClass import Main
-from utils.types import *
+from bot.classes.MainClass import Main
+from bot.utils.types import *
 
 nest_asyncio.apply()
 

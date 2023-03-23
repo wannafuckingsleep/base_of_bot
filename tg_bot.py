@@ -6,13 +6,12 @@ import traceback
 from datetime import datetime
 from typing import Union
 
-import aiogram.utils.deep_linking
 from aiogram import types
 from aiogram.types import ContentTypes, Message
-from utils.types import Event, Message as ToadbotMessage
+from bot.utils.types import Event, Message as ToadbotMessage
 
 from settings import platform_tokens
-from TgClass import TgClass
+from bot.classes.TgClass import TgClass
 
 need_debug_log = False
 if need_debug_log:  # Log for debug to console and/or file :)

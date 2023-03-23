@@ -5,9 +5,9 @@ from typing import Union
 from vkbottle import GroupEventType
 from vkbottle_types import GroupTypes
 from vkbottle.bot import Message
-from utils.types import Event
+from bot.utils.types import Event
 
-from VkClass import VkClass
+from bot.classes.VkClass import VkClass
 
 need_debug_log = False
 if need_debug_log:  # Log for debug to console and/or file

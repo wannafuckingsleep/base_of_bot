@@ -1,7 +1,7 @@
 import asyncio
 import nest_asyncio
 from abc import abstractmethod
-from DBClass import DBClass
+from bot.classes.DBClass import DBClass
 import re
 import os
 import traceback
@@ -10,12 +10,12 @@ from datetime import timedelta
 from asyncio import CancelledError
 import aiofiles
 
-from utils.keyboards import Keyboard
-from utils.types import *
+from bot.utils.keyboards import Keyboard
+from bot.utils.types import *
 from typing import Union
 import aiohttp
 from settings import product_server, log_dir
-from migrations import check_migrations
+from bot.modules.migrations import check_migrations
 
 nest_asyncio.apply()
 

@@ -1,17 +1,15 @@
 import asyncio
-import random
 import traceback
-from typing import Union, Literal, Optional
+from typing import Optional
 
-from vkbottle import Keyboard, Text, VKAPIError, KeyboardButtonColor, Callback, \
-    DocMessagesUploader, PhotoMessageUploader, VKApps, OpenLink
+from vkbottle import Keyboard, Text, VKAPIError, KeyboardButtonColor, Callback
 from vkbottle.bot import Bot
 import re
 
-from CommandClass import Commands
+from bot.classes.CommandClass import Commands
 from settings import product_server, platform_tokens
 from re import findall
-from utils.types import Event, Message
+from bot.utils.types import Message
 from loguru import logger
 
 
