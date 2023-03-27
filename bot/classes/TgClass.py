@@ -8,7 +8,7 @@ from aiogram.utils import exceptions
 
 from bot.classes.CommandClass import Commands
 from settings import platform_tokens, product_server
-from utils.types import Event, Message
+from bot.utils.types import Event, Message
 
 
 class TgClass(Commands):

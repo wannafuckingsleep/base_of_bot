@@ -1,5 +1,5 @@
 from abc import ABC
-from FunctionClass import MainFunctions
+from bot.classes.FunctionClass import MainFunctions
 
 
 class Commands(
