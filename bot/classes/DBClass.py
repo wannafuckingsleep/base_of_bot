@@ -5,7 +5,7 @@ from typing import Optional
 import aiofiles
 import aiomysql
 
-from settings import host, base_user, base_pass, base_charset, product_server, log_dir
+from bot_settings import host, base_user, base_pass, base_charset, product_server, log_dir
 
 
 class DBClass:

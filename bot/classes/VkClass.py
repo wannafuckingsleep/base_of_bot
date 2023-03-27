@@ -7,7 +7,7 @@ from vkbottle.bot import Bot
 import re
 
 from bot.classes.CommandClass import Commands
-from settings import product_server, platform_tokens
+from bot_settings import product_server, platform_tokens
 from re import findall
 from bot.utils.types import Message
 from loguru import logger

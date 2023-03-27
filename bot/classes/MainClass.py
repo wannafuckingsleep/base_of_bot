@@ -14,7 +14,7 @@ from bot.utils.keyboards import Keyboard
 from bot.utils.types import *
 from typing import Union
 import aiohttp
-from settings import product_server, log_dir
+from bot_settings import product_server, log_dir
 from bot.modules.migrations import check_migrations
 
 nest_asyncio.apply()
