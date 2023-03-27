@@ -10,7 +10,7 @@ from aiogram import types
 from aiogram.types import ContentTypes, Message
 from bot.utils.types import Event, Message as ToadbotMessage
 
-from bot_settings import platform_tokens
+from settings import platform_tokens
 from bot.classes.TgClass import TgClass
 
 need_debug_log = False

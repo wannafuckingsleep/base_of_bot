@@ -4,4 +4,4 @@
 /.idea/
 test.py
 /logs/
-bot_settings.py
+settings.py
