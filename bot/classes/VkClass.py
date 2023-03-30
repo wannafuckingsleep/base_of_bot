@@ -12,6 +12,8 @@ from re import findall
 from bot.utils.types import Message
 from loguru import logger
 
+from bot.utils.images import Images
+
 
 class VkClass(Commands):
     platform = 'vk'
@@ -25,6 +27,7 @@ class VkClass(Commands):
         'green': KeyboardButtonColor.POSITIVE,  # Зелёная
     }
     admins = (569930838,)  # ID админов
+    image = Images(platform)
 
     def distribute_platform_commands(self, ):
         specific_bot_commands = {  # Специфичные для платформы команды

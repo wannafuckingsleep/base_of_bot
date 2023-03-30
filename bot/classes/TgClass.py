@@ -10,6 +10,8 @@ from bot.classes.CommandClass import Commands
 from settings import platform_tokens, product_server
 from bot.utils.types import Event, Message
 
+from bot.utils.images import Images
+
 
 class TgClass(Commands):
 
@@ -19,6 +21,8 @@ class TgClass(Commands):
     webhook_host = ""  # При необходимости, добавить вебхук
     webhook_path = f'/{platform_tokens["tg"]}'
     webhook_url = f'{webhook_host}{webhook_path}'
+
+    image = Images(platform)
 
     webhook_port = (5001, 5000)  # 5000 - для тестового бота, 5001 - для основного бота
 

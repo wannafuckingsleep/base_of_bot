@@ -16,6 +16,7 @@ from typing import Union
 import aiohttp
 from settings import product_server, log_dir
 from bot.modules.migrations import check_migrations
+from bot.utils.images import Images
 
 nest_asyncio.apply()
 
@@ -26,6 +27,7 @@ class Main:
     keyboard: Keyboard  # Класс с клавиатурами бота
     db: Optional[DBClass] = None  # БД
     bot_commands: dict  # Словарь с коммандами бота
+    image: Images
 
     admins: tuple[int]  # Список UserID админов.
 
