@@ -1,7 +1,8 @@
 from abc import ABC
 import nest_asyncio
 from bot.classes.MainClass import Main
-from bot.utils.types import *
+
+from bot.models.import_all_models import *
 
 nest_asyncio.apply()
 

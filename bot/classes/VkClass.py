@@ -9,7 +9,7 @@ import re
 from bot.classes.CommandClass import Commands
 from settings import product_server, platform_tokens
 from re import findall
-from bot.utils.types import Message
+from bot.models.message import Message
 from loguru import logger
 
 from bot.utils.images import Images

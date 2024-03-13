@@ -8,7 +8,7 @@ from aiogram.utils import exceptions
 
 from bot.classes.CommandClass import Commands
 from settings import platform_tokens, product_server
-from bot.utils.types import Event, Message
+from bot.models.import_all_models import Event, Message
 
 from bot.utils.images import Images
 

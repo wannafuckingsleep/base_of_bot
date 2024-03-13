@@ -11,8 +11,8 @@ from asyncio import CancelledError
 import aiofiles
 
 from bot.utils.keyboards import Keyboard
-from bot.utils.types import *
-from typing import Union
+
+from typing import Union, Optional
 import aiohttp
 from settings import product_server, log_dir
 from bot.modules.migrations import check_migrations
