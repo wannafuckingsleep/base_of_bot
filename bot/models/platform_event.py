@@ -1,5 +1,4 @@
 from typing import Optional, Union
-from datetime import datetime
 from bot.models.chat import Chat
 
 class Event:

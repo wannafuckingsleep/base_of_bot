@@ -5,7 +5,7 @@ from typing import Union
 from vkbottle import GroupEventType
 from vkbottle_types import GroupTypes
 from vkbottle.bot import Message
-from bot.utils.types import Event
+from bot.models.platform_event import Event
 
 from bot.classes.VkClass import VkClass
 

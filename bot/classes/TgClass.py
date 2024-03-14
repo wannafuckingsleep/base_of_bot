@@ -56,6 +56,7 @@ class TgClass(Commands):
         async def on_startup(dp):  # Общая функция, срабатывающая при запуске получения апдейтов
             if product_server:
                 await on_startup_webhook(dp)
+
             await self.on_startup()
 
         async def on_startup_webhook(dp):  # Общая функция, срабатывающая при запуске вебхука
@@ -82,6 +83,7 @@ class TgClass(Commands):
                 port=self.webhook_port,
                 skip_updates=True,
             )
+
         else:
             print('start polling')
             executor.start_polling(self.dp, on_startup=on_startup, on_shutdown=on_shutdown, skip_updates=True)
@@ -89,95 +91,188 @@ class TgClass(Commands):
     async def generate_keyboard(self, buttons):  # Генерация клавиатуры
         if buttons is None or len(buttons) == 0:
             return None
+
         # Инициируем клавиатуру
         keyboard = types.InlineKeyboardMarkup()
         for button in buttons:  # Обрабатываем все кнопки
             if button['text'] in ('line', 'tg_line'):
                 keyboard.row()
-            elif button['text'] == 'vk_line':
                 continue
-            else:
-                if 'type' in button and button['type'] in ('callback', 'tg_callback'):
-                    keyboard.insert(types.InlineKeyboardButton(
-                        text=button['visible_text'], callback_data=button['text']))
-                else:
-                    keyboard.insert(types.InlineKeyboardButton(
-                        text=button['visible_text'], switch_inline_query_current_chat=button['text']))
+
+            if button['text'] == 'vk_line':
+                continue
+
+            if 'type' in button and button['type'] in ('callback', 'tg_callback'):
+                keyboard.insert(
+                    types.InlineKeyboardButton(
+                        text=button['visible_text'],
+                        callback_data=button['text'])
+                )
+                continue
+
+            keyboard.insert(
+                types.InlineKeyboardButton(
+                    text=button['visible_text'],
+                    switch_inline_query_current_chat=button['text']
+                )
+            )
+
         return keyboard
 
-    async def send_message(self, message: Message, send_long_message=True):
-        if message is not None:
-            if message.current_chat is None:
-                message.current_chat = await self.get_chat_settings(message.chat_id)
-            try:
-                if message.attachment is None:
-                    msg = await self.bot.send_message(
-                        message.chat_id, message.message, reply_markup=message.keyboard,
-                        disable_web_page_preview=True, message_thread_id=message.current_chat.thread_id
-                    )
-                else:
-                    if message.message_type == 'photo' or message.message_type == "text":
-                        try:
-                            msg = await self.bot.send_photo(
-                                message.chat_id, message.attachment, caption=message.message,
-                                reply_markup=message.keyboard, message_thread_id=message.current_chat.thread_id
+    async def send_message(
+            self,
+            message: Message,
+            send_long_message=True
+    ):
+        msg = None
+        if message is None:
+            return
+
+        if message.chat is None:
+            message.chat = await self.get_chat_settings(message.chat_id)
+
+        try:
+
+            if not message.attachment:
+                msg = await self.bot.send_message(
+                    message.chat_id,
+                    message.message,
+                    reply_markup=message.keyboard,
+                    message_thread_id=message.chat.thread_id,
+                    disable_web_page_preview=not message.web_page_preview,
+                    reply_to_message_id=message.reply_to_message_id
+                )
+
+            else:
+
+                if type(message.attachment) is list:
+                    attachment_list = []
+                    for attachment in message.attachment:
+                        attachment_list.append(
+                            types.InputMediaPhoto(
+                                media=attachment,
                             )
-                        except:
-                            msg = await self.bot.send_animation(
-                                message.chat_id, message.attachment, caption=message.message,
-                                reply_markup=message.keyboard, message_thread_id=message.current_chat.thread_id
-                            )
-                    else:  # message.message_type == 'gif':
-                        msg = await self.bot.send_animation(
-                            message.chat_id, message.attachment, caption=message.message,
-                            reply_markup=message.keyboard, message_thread_id=message.current_chat.thread_id
                         )
-                if message.need_delete and message.chat_id in self.subscribed_chats:  # TODO вынести в общий метод
-                    message_id = await self.get_message_id(msg)
-                    await self.message_for_delete(message_id=message_id, chat_id=message.chat_id)
+                    attachment_list[0].caption = message.message
+                    message.attachment = attachment_list
+
+                if message.message_type == 'photo' or message.message_type == "text":
+                    try:
+
+                        if type(message.attachment) is list:
+                            msg = await self.bot.send_media_group(
+                                chat_id=message.chat_id,
+                                media=message.attachment,
+                                message_thread_id=message.chat.thread_id,
+                                reply_to_message_id=message.reply_to_message_id
+                            )
+
+                        else:
+                            msg = await self.bot.send_photo(
+                                message.chat_id,
+                                message.attachment,
+                                caption=message.message,
+                                reply_markup=message.keyboard,
+                                message_thread_id=message.chat.thread_id,
+                                reply_to_message_id=message.reply_to_message_id
+                            )
+
+                    except exceptions.BadRequest as err:
+                        if "{0}".format(err) == "Can't use file of type animation as photo":
+                            msg = await self.bot.send_animation(
+                                message.chat_id,
+                                message.attachment,
+                                caption=message.message,
+                                reply_markup=message.keyboard,
+                                message_thread_id=message.chat.thread_id,
+                                reply_to_message_id=message.reply_to_message_id
+                            )
+
+                elif message.message_type == 'gif':
+                    msg = await self.bot.send_animation(
+                        message.chat_id,
+                        message.attachment,
+                        caption=message.message,
+                        reply_markup=message.keyboard,
+                        message_thread_id=message.chat.thread_id,
+                        reply_to_message_id=message.reply_to_message_id
+                    )
+
+            if message.need_delete and message.chat_id in self.subscribed_chats:  # TODO вынести в общий метод
+                message_id = await self.get_message_id(msg)
+                await self.message_for_delete(message_id=message_id, chat_id=message.chat_id)
+
+            if msg:
                 return msg
-            except exceptions.RetryAfter as e:
-                # Если для всех сообщений делать flood_timeout, то возникает 2 проблемы:
-                # 1. Конфликт с текущим механизмом блокировок команд (особенно, если они глобальные, а не по чатам),
-                # так как разблокировка происходит только после полного завершения.
-                # Есть три варианта решения (можно все использовать одновременно):
-                # 1.1. Где не нужна глобальная блокировка - сделать блокировку по чатам. И вообще перегруппировать их.
-                # 1.2. (Done) Повторную отправку обернуть в create_task без await'а этого таска (самый хороший вариант)
-                # 1.3. Не совсем решение, но определить, для каких сообщений нужен flood_timeout и поставить только
-                # для них. Это, как минимум все cron рассылки, результаты сражений, гонок, наград и т.д.
-                # 2. У webhook есть лимит в 100 соединений. Если все или большая часть этих соединений остаются висеть,
-                # ожидая повторной отправки, то мы не получаем новые события
-                async def recursive_call(exception):
-                    await asyncio.sleep(exception.timeout)
-                    await self.send_message(message)  # Recursive call
 
-                asyncio.create_task(recursive_call(e))
-            except exceptions.MigrateToChat as e:
-                await self.chat_migrate(message.chat_id, e.migrate_to_chat_id)
+        except exceptions.RetryAfter as e:
+            async def recursive_call(exception):
+                await asyncio.sleep(exception.timeout)
+                await self.send_message(message)  # Recursive call
 
-                async def recursive_call():
-                    message.chat_id = e.migrate_to_chat_id
-                    await self.send_message(message)  # Recursive call
+            asyncio.create_task(recursive_call(e))
 
-                asyncio.create_task(recursive_call())
-            except (exceptions.BotKicked, exceptions.Unauthorized, exceptions.ChatNotFound):
-                pass
-            except exceptions.MessageIsTooLong as e:
-                # TODO Сделать отправку слишком длинных сообщений
-                pass
-            except Exception as err:  # TODO Убрать дублирующийся код (есть ещё в вк), вынести в общий метод
-                if not product_server:
-                    print(err)
-                if message.need_log:
-                    await self.write_log('send_message_log',
-                                         f"\n{message.__dict__}\n" + traceback.format_exc())
-                if message.need_exception:
-                    return await self.write_msg_errors(err, message.chat_id)
+        except exceptions.MigrateToChat as e:
+            await self.chat_migrate(message.chat_id, e.migrate_to_chat_id)
+
+            async def recursive_call():
+                message.peer_id = e.migrate_to_chat_id
+                await self.send_message(message)  # Recursive call
+
+            asyncio.create_task(recursive_call())
+
+        except (exceptions.BotKicked, exceptions.Unauthorized, exceptions.ChatNotFound):
+            pass
+
+        except exceptions.BadRequest as err:
+            error = "{0}".format(err)
+
+            if error in (
+                "Not enough rights to send photos to the chat",
+                "Not enough rights to send animations to the chat"
+            ):
+                await self.send_message(
+                    Message(
+                        message.chat_id,
+                        "Для корректной работы Бота нужно выдать статус администратора!"
+                    )
+                )
+                return "admin"
+
+            elif error == "Message is too long":
+                if send_long_message:
+                    pass
+
+        except exceptions.MessageIsTooLong as e:
+            pass
+
+        except Exception as err:  # TODO Убрать дублирующийся код (есть ещё в вк), вынести в общий метод
+
+            if not product_server:
+                print(err)
+
+            if message.need_log:
+                await self.write_log(
+                    'send_message_log',
+                    f"\n{message.__dict__}\n" + traceback.format_exc()
+                )
+
+            if message.need_exception:
+                return await self.write_msg_errors(err, message.chat_id)
 
     # Удаляем сообщение
-    async def delete_message(self, message: Message):
+    async def delete_message(self, message):
         try:
             await self.bot.delete_message(message.chat_id, message.message_id)
+
+        except (
+                exceptions.BotKicked,
+                exceptions.Unauthorized,
+                exceptions.ChatNotFound,
+                exceptions.MessageToDeleteNotFound
+        ):
+            pass
+
         except Exception as e:
             if not product_server:
                 # Можно переделать, передавая объект во write_log и формируя строку там
@@ -188,14 +283,23 @@ class TgClass(Commands):
 
     async def edit_message(self, message: Message):
         try:
-            if message.message_type == 'caption':
+
+            if message.attachment:
                 await self.bot.edit_message_caption(
-                    caption=message.message, chat_id=message.chat_id,
-                    message_id=message.message_id, reply_markup=message.keyboard)
+                    caption=message.message,
+                    chat_id=message.chat_id,
+                    message_id=message.message_id,
+                    reply_markup=message.keyboard
+                )
+
             else:
                 await self.bot.edit_message_text(
-                    chat_id=message.chat_id, text=message.message, message_id=message.message_id,
-                    reply_markup=message.keyboard)
+                    chat_id=message.chat_id,
+                    text=message.message,
+                    message_id=message.message_id,
+                    reply_markup=message.keyboard
+                )
+
         except exceptions.RetryAfter as e:
             async def recursive_call(exception):
                 await asyncio.sleep(exception.timeout)
@@ -203,14 +307,26 @@ class TgClass(Commands):
                 await self.edit_message(message)
 
             asyncio.create_task(recursive_call(e))
+
         except (exceptions.MessageNotModified, exceptions.MessageToEditNotFound):
             pass
+
         except exceptions.MessageIsTooLong as e:
             return "TooLongMessage"
+
         except Exception:
-            await self.write_log('send_message_log',
-                                 f"{message.chat_id}\n{message.message}\n{message.attachment}\n"
-                                 + traceback.format_exc())
+
+            log_message = (
+                f"{message.chat_id}\n"
+                f"{message.message}\n"
+                f"{message.attachment}\n" +
+                  traceback.format_exc()
+            )
+            await self.write_log(
+                'send_message_log',
+                log_message
+            )
+
 
     async def callback_message(self, event: Event, alert=True):
         await self.bot.answer_callback_query(
@@ -223,9 +339,12 @@ class TgClass(Commands):
     async def forward_message(self, to_chat, from_chat, message_id, need_exception=False):
         try:
             await self.bot.forward_message(to_chat, from_chat, message_id)
+
         except Exception as err:
+
             if not product_server:
                 print(err)
+
             if need_exception:
                 return await self.write_msg_errors(err, to_chat)
 
