@@ -198,10 +198,7 @@ async def message_menu(platform_event: Message):
                 await bot.execute_command(event, extra, 'VK_TEXT_MESSAGES')
 
             if platform_event.from_id in bot.admins:  # commands for admins
-
-                if message == 'reboot':
-                    await bot.mysql_connect()
-                    await bot.reboot(platform_event.from_id)
+                ...
 
     except:
         await VkClass.write_log('VK_GET_EVENT_ERROR', f'{str(platform_event)}\n{traceback.format_exc()}')

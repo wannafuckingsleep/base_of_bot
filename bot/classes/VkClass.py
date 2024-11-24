@@ -137,7 +137,7 @@ class VkClass(Commands):
             )
 
             if msg[0].error:
-                return await self.write_msg_errors(msg[0].error.code, message.chat_id)
+                return await self.write_msg_errors(msg[0].error.code)
 
             if message.need_delete and message.chat_id in self.subscribed_chats:  # TODO вынести в общий метод
                 message_id = await self.get_message_id(msg)
@@ -160,7 +160,7 @@ class VkClass(Commands):
                 await asyncio.sleep(timeout)
                 await self.send_message(message)  # Recursive call
 
-            asyncio.create_task(recursive_call(e))
+            task = asyncio.create_task(recursive_call(e))
 
         except Exception as err:
 
@@ -174,7 +174,7 @@ class VkClass(Commands):
                 )
 
             if message.need_exception:
-                return await self.write_msg_errors(err, message.chat_id)
+                return await self.write_msg_errors(err)
 
     # Удаляем сообщение
     async def delete_message(self, message: Message):
@@ -209,7 +209,7 @@ class VkClass(Commands):
                 await asyncio.sleep(timeout)
                 await self.edit_message(message)  # Recursive call
 
-            asyncio.create_task(recursive_call(e))
+            task = asyncio.create_task(recursive_call(e))
 
         except VKAPIError[914]:
             return "TooLongMessage"

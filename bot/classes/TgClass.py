@@ -258,7 +258,7 @@ class TgClass(Commands):
                 )
 
             if message.need_exception:
-                return await self.write_msg_errors(err, message.chat_id)
+                return await self.write_msg_errors(err)
 
     # Удаляем сообщение
     async def delete_message(self, message):
@@ -346,7 +346,7 @@ class TgClass(Commands):
                 print(err)
 
             if need_exception:
-                return await self.write_msg_errors(err, to_chat)
+                return await self.write_msg_errors(err)
 
     @classmethod
     async def get_message_id(cls, message) -> Optional[int]:  # Получение ID отправленного сообщения

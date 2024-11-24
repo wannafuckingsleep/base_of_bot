@@ -226,10 +226,7 @@ async def text_menu(platform_event: Message):
 
         if user in bot.admins:  # блок команд для админов
 
-            if platform_event.text == 'reboot':
-                await bot.reboot(user)
-
-            elif platform_event.text == 'get id':
+            if platform_event.text == 'get id':
                 file_id = await bot.get_attachment_id(platform_event, need_all=True)
                 await bot.send_message(
                     ToadbotMessage(chat_id, file_id)

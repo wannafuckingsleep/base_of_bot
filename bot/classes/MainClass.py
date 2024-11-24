@@ -20,12 +20,19 @@ from bot.utils.images import Images
 from bot.classes.DBClass import DBClass
 
 from bot.models.import_all_models import *
+from bot.classes.FunctionClass import MainFunctions
 
 nest_asyncio.apply()
 
 
 # Родительский класс с объявлением всех стартовых для работы методов
 class Main:
+    """
+    Основной класс бота со всем нужным функционалом и инициализированными модулями (в __init__)
+
+    :cvar keyboard: Keyboard object.
+    :cvar db: DB object.
+    """
 
     keyboard: Keyboard  # Класс с клавиатурами бота
     db: Optional[DBClass] = None  # БД
@@ -38,8 +45,11 @@ class Main:
     subscribed_chats: dict = {}  # Подписанные чаты на автоудаление сообщений
     need_delete: dict = {}
 
+    main_functions: MainFunctions
+
     def __init__(self):
-        pass
+        # При создании новых функциональных модулей, добавлять инициализацию в текущий конструктор
+        self.main_functions = MainFunctions(self)
 
     # Индивидуальная генерация клавиатуры для отдельной платформы
     @abstractmethod
@@ -95,13 +105,9 @@ class Main:
         if 'lock' in command:
             extra['lock'] = command['lock']
 
-        return (
-            Event(
-                message=command_message,
-                param=param
-            ),
-            extra
-        )
+        return (Event(message=command_message,
+                      param=param),
+                extra)
 
     @staticmethod
     async def get_event_without_param(command, command_message) -> tuple:
@@ -128,9 +134,9 @@ class Main:
             command_message = command['message']
             if with_params:
                 if (
-                        with_params and
-                        type(command_message) == str and
-                        event.startswith(command_message + " ")
+                    with_params and
+                    type(command_message) == str and
+                    event.startswith(command_message + " ")
                 ):
                     return await self.get_event_with_param(command_message, clean_event_text, command)
 
@@ -151,12 +157,39 @@ class Main:
 
         return False, False
 
+    @staticmethod
+    async def execute_method(event: Event,
+                             command_data: dict) -> Optional[Message]:
+        """
+        Вызов метода с переданными параметрами
+
+        :param event: Объект Event of platform
+        :param command_data: Данные команды в виде dict из CommandClass
+        """
+        method = command_data['func']  # Получаем метод, который будет выполняться
+
+        # Вызываем метод на экземпляре класса
+        if 'extra_params' in command_data:
+            message = await method(event, command_data['extra_params'])
+        else:
+            message = await method(event)
+
+        return message
+
     async def execute_command(
             self,
             event: Event,
-            extra: dict,
+            command_dict: dict,
             log: str
     ):
+        """
+        Выполнение команд
+
+        :param event: Объект Event of platform
+        :param command_dict: Данные команды в виде dict из CommandClass
+        :param log: Путь к файлу, куда писать лог
+        """
+
         message: Optional[Union[Message, list[Message]]] = None
         event.chat = await self.get_chat_settings(
             chat_id=event.chat_id,
@@ -167,34 +200,24 @@ class Main:
         need_remove_lock = False  # Показывает необходимость снимать лок после завершения функции
 
         try:
-            if 'lock' in extra:
+            if 'lock' in command_dict:
 
-                if event.chat_id in extra['lock']['queue']:
+                if event.chat_id in command_dict['lock'].queue:
                     message = Message(
                         event.chat_id,
-                        extra['lock']['message']
+                        command_dict['lock'].message
                     )
 
                 else:
-                    extra['lock']['queue'][event.chat_id] = True
+                    command_dict['lock'].queue[event.chat_id] = True
                     need_remove_lock = True
 
-                    if 'extra_params' in extra:
-                        message = await extra['func'](event, extra['extra_params'])
-
-                    else:
-                        message = await extra['func'](event)
+                    message = await self.execute_method(event, command_dict)
 
             else:
-
-                if 'extra_params' in extra:
-                    message = await extra['func'](event, extra['extra_params'])
-
-                else:
-                    message = await extra['func'](event)
+                message = await self.execute_method(event, command_dict)
 
             if message:
-
                 if type(message) == list:
 
                     sub_message: Message
@@ -206,7 +229,7 @@ class Main:
                             sub_message.chat = event.chat
 
                         await self.send_message(sub_message)
-                        await asyncio.sleep(0.5) # задержка во избежание флуд-лимита
+                        await asyncio.sleep(0.5)
 
                 else:
                     if type(message) == Message:
@@ -215,30 +238,26 @@ class Main:
 
                         await self.send_message(message)
 
-        except:
-            log_text = "_" * 25 + f"\n{event.__dict__}"
+        except Exception as e:
+            result = e
             if message is not None:
-
                 if type(message) == list:
-                    for sub_message in message:
-                        log_text += f"\n\n{sub_message.__dict__}"
-
+                    result = " | ".join(str([i.__dict__ for i in message]))
                 else:
-                    log_text += f"\n\n{message.__dict__}"
+                    result = message.__dict__
 
-            log_text += (
-                f"\n" + f"{log_text}\n\n" +
-                traceback.format_exc() + "\n" +
-                "_" * 25
+            log_message = (
+                f"EventDict: {event.__dict__}\n"
+                f"MessageDict: {result}\n"
             )
             await self.write_log(
                 log,
-                log_text
+                log_message
             )
 
         finally:
-            if need_remove_lock and event.chat_id in extra['lock']['queue']:
-                extra['lock']['queue'].pop(event.chat_id)
+            if need_remove_lock and event.chat_id in command_dict['lock'].queue:
+                command_dict['lock'].queue.pop(event.chat_id)
 
     async def on_startup(self):  # Асинхронная функция, выполняющаяся перед стартом получения апдейтов
         self.delete_queue = asyncio.Queue()
@@ -246,9 +265,9 @@ class Main:
         await check_migrations(self.db)  # Выполняем миграции
         await self.get_keyboards()
 
-        asyncio.create_task(self.check_for_delete())
-        asyncio.create_task(self.delete_messages())
-        asyncio.create_task(self.get_subscribed_chats())
+        task = asyncio.create_task(self.check_for_delete())
+        task = asyncio.create_task(self.delete_messages())
+        task = asyncio.create_task(self.get_subscribed_chats())
 
         if product_server:
             for admin in self.admins:
@@ -259,18 +278,6 @@ class Main:
                         need_delete=False
                     )
                 )
-
-    # Перезагрузка бота
-    async def reboot(self, user):
-        await self.mysql_disconnect()
-
-        for admin in self.admins:
-            await self.send_message(
-                Message(admin, 'rebooted by ' + str(user))
-            )
-
-        await asyncio.sleep(1)
-        os._exit(1)
 
     # Асинхронная функция, выполняющаяся после прекращения получения апдейтов
     async def on_shutdown(self):
@@ -429,7 +436,7 @@ class Main:
     # Обработка ошибок отправки сообщений
     # TODO Вынести текст сообщения про ошибки в свойства класса, оставить только общую функцию
     @staticmethod
-    async def write_msg_errors(err, chat_id):
+    async def write_msg_errors(err):
         err = "{0}".format(err)
         # Бота кикнули, запретили ему присылать фото и т.д.
         if (err.find('bot was kicked from the') >= 0 or err.find('chat was deactivated') >= 0
