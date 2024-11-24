@@ -6,8 +6,10 @@ from bot.objects.base_module import BaseModule
 nest_asyncio.apply()
 
 
-# Класс с описаниями всех основных рабочих функций
-class MainFunctions(BaseModule):
+class ExampleFuncs(BaseModule):
+    """
+    Example class с примерами разных типов функций и работы с ними
+    """
 
     async def example_func_without_params_with_extra(self, event: Event, extra) -> Message:
         """

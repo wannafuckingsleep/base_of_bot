@@ -5,9 +5,9 @@
 """
 import sys
 
-arg = " ".join(sys.argv[1:])
+arg = sys.argv[1]
 
-if arg == "hello from cron":
+if arg == "hello_from_cron":
     import cron.hello_from_cron
 
-...
+

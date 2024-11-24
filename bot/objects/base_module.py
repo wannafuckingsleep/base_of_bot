@@ -5,7 +5,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from bot.classes.MainClass import Main  # Импорт только для проверки типов
+    from bot.classes.main_bot import Main  # Импорт только для проверки типов
 
 class BaseModule:
     """

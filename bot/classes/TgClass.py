@@ -6,7 +6,7 @@ from typing import Optional
 from aiogram import Bot, Dispatcher, executor, types, md
 from aiogram.utils import exceptions
 
-from bot.classes.CommandClass import Commands
+from bot.classes.commands import Commands
 from settings import platform_tokens, product_server
 from bot.models.import_all_models import Event, Message
 

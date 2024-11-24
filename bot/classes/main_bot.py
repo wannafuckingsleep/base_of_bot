@@ -20,7 +20,7 @@ from bot.utils.images import Images
 from bot.classes.DBClass import DBClass
 
 from bot.models.import_all_models import *
-from bot.classes.FunctionClass import MainFunctions
+from bot.classes.example_functions import ExampleFuncs
 
 nest_asyncio.apply()
 
@@ -45,11 +45,11 @@ class Main:
     subscribed_chats: dict = {}  # Подписанные чаты на автоудаление сообщений
     need_delete: dict = {}
 
-    main_functions: MainFunctions
+    example_functions: ExampleFuncs
 
     def __init__(self):
         # При создании новых функциональных модулей, добавлять инициализацию в текущий конструктор
-        self.main_functions = MainFunctions(self)
+        self.example_functions = ExampleFuncs(self)
 
     # Индивидуальная генерация клавиатуры для отдельной платформы
     @abstractmethod

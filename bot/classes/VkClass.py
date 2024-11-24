@@ -6,7 +6,7 @@ from vkbottle import Keyboard, Text, VKAPIError, KeyboardButtonColor, Callback
 from vkbottle.bot import Bot
 import re
 
-from bot.classes.CommandClass import Commands
+from bot.classes.commands import Commands
 from settings import product_server, platform_tokens
 from re import findall
 from bot.models.message import Message
