@@ -1,5 +1,9 @@
+"""
+Модуль, в котором объявляем все команды и привязку к конкретной функции
+"""
 from abc import ABC
 from bot.classes.FunctionClass import MainFunctions
+from bot.locks.all_locks import Locks
 
 
 class Commands(
@@ -14,7 +18,7 @@ class Commands(
                 {
                     "message": ("начать", "/start"),  # Важно прописывать все в нижнем регистре
                     "func": self.example_func_without_params_with_extra,
-                    "lock": self.command_lock,  # Необязательный параметр
+                    "lock": Locks.classic,  # Необязательный параметр
                     "extra_params": "help param",  # Необязательный параметр
                 },
             ),
@@ -24,7 +28,7 @@ class Commands(
                 {
                     "message": "меня зовут",
                     "func": self.example_func_with_params,
-                    # "lock": self.command_lock,
+                    # "lock": Locks.classic,
                     # "extra_params": "extra"
                 },
             ),
@@ -35,7 +39,7 @@ class Commands(
                 {
                     "message": ("смотри на мою фотку", "посмотри на мою фотку"),
                     "func": self.example_func_with_attachment,
-                    # "lock": self.command_lock,
+                    # "lock": Locks.classic,
                     # "extra_params": "extra"
                 },
             ),
@@ -46,7 +50,7 @@ class Commands(
                 {
                     "message": "эй, друг",
                     "func": self.example_func_only_with_reply,
-                    # "lock": self.command_lock,
+                    # "lock": Locks.classic,
                     # "extra_params": "extra"
                 },
             ),
@@ -57,7 +61,7 @@ class Commands(
                 {
                     "message": "test",
                     "func": self.example_callback_func_without_params,
-                    # "lock": self.command_lock,
+                    # "lock": Locks.classic,
                     # "extra_params": "extra"
                 },
             ),
@@ -68,7 +72,7 @@ class Commands(
                 {
                     "message": 'модерация',
                     "func": self.example_callback_func_with_params,
-                    # "lock": self.command_lock,
+                    # "lock": Locks.classic,
                     # "extra_params": "extra"
                 },
             ),

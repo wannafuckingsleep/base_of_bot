@@ -34,13 +34,6 @@ class Main:
 
     admins: tuple[int]  # Список UserID админов.
 
-    # Лок, который блокирует одновременное выполнение одинаковых команд в одном чате.
-    # Используется в CommandClass.py
-    command_lock: dict = {
-        "queue": {},
-        "message": "Попробуйте использовать команду через 5 секунд"  # Текст, который будет выдавать лок
-    }
-
     delete_queue: Optional[asyncio.Queue] = None  # Используется для автоудаления сообщений
     subscribed_chats: dict = {}  # Подписанные чаты на автоудаление сообщений
     need_delete: dict = {}
