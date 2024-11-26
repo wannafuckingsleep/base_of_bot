@@ -15,11 +15,15 @@ class Commands(Main, ABC):
 
             "message_commands": (
                 {
-                    "message": ("начать", "/start"),  # Важно прописывать все в нижнем регистре
+                    "message": ("тест", "test"),  # Важно прописывать все в нижнем регистре
                     "func": self.example_functions.example_func_without_params_with_extra,
                     "lock": Locks.classic,  # Необязательный параметр
                     "extra_params": "help param",  # Необязательный параметр
                 },
+                {
+                    "message": "hello",  # Демонстрация зависимостей
+                    "func": self.battle.dungeon.hello,
+                }
             ),
 
             # _______________   ОБЫЧНЫЕ ТЕКСТОВЫЕ СООБЩЕНИЯ С ПАРАМЕТРОМ   _______________ #

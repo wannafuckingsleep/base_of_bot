@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from asyncio import CancelledError
 import aiofiles
 
+from bot.classes.battles.battle import Battle
 from bot.utils.keyboards import Keyboard
 
 from typing import Union, Optional
@@ -45,11 +46,14 @@ class Main:
     subscribed_chats: dict = {}  # Подписанные чаты на автоудаление сообщений
     need_delete: dict = {}
 
+    # Объявляем наличие функциональных модулей, к которым у нас будет доступно обращение.
     example_functions: ExampleFuncs
+    battle: Battle
 
     def __init__(self):
         # При создании новых функциональных модулей, добавлять инициализацию в текущий конструктор
         self.example_functions = ExampleFuncs(self)
+        self.battle = Battle(self)  # Пример построенной цепочки классов: бой -> подземелье и т.д. Battle -> Dungeon
 
     # Индивидуальная генерация клавиатуры для отдельной платформы
     @abstractmethod
@@ -535,3 +539,6 @@ class Main:
 
                 else:
                     return False
+
+    async def hello(self, event: Event):
+        print("hello from Main-hello()")
