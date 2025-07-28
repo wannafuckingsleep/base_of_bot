@@ -20,8 +20,7 @@ class DBClass:
                                                      charset=base_charset,
                                                      autocommit=True,
                                                      pool_recycle=31536000,
-                                                     maxsize=100,
-                                                     )
+                                                     maxsize=100)
 
     async def mysql_disconnect(self):
         try:
