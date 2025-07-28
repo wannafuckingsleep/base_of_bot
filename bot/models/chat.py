@@ -17,3 +17,18 @@ class Chat:
         self.thread_id: Optional[int] = thread_id  # Для использования бота в топиках
         self.delete_message: int = delete_message  # число в минутах, после которого нужно удалять сообщения
         self.start_date: datetime = start_date  # Дата добавления бота в чат
+
+    @classmethod
+    async def create_class(cls, row: dict) -> "Chat":
+        """
+        Создает объект класса на основе переданного словаря.
+
+        :param row: Словарь с данными о чате (выгружаем из базы данных: таблица chat).
+        :return: Объект класса Chat.
+        """
+        return Chat(
+            chat_id=row["chat_id"],
+            delete_message=row['delete_message'],
+            start_date=row['start_date'],
+            thread_id=row['thread_id'] if 'thread_id' in row else None,
+        )

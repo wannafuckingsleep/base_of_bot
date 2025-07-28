@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "BaseOfVkBot"
+version = "1.0.0"
+description = "Vk Bot on VkBottle"
+authors = ["wannafuckingsleep"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+asyncio = ">=3.4.3,<3.5.0"
+aiomysql = ">=0.2.0,<0.3.0"
+vkbottle = "4.5.2"
+vkbottle-types = "5.199.99.4"
+nest-asyncio = ">=1.5.5,<1.6.0"
+pymysql = ">=1.1.0,<1.2.0"
+pytz = "2023.3"
+aiofiles = ">=23.2.1,<24.2"
+aiohttp = ">3.12"
+loguru = "^0.7.2"
+babel = ">=2.9.1,<2.10.0"
+pydantic = "^2.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

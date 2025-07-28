@@ -1,6 +1,6 @@
 import asyncio
 import nest_asyncio
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 import re
 import os
 import traceback
@@ -10,7 +10,8 @@ from asyncio import CancelledError
 import aiofiles
 
 from bot.classes.battles.battle import Battle
-from bot.utils.keyboards import Keyboard
+from bot.classes.chat_settings.chat_settings_logic import ChatSettings
+from bot.utils.keyboard.keyboard import Keyboard
 
 from typing import Union, Optional
 import aiohttp
@@ -27,7 +28,7 @@ nest_asyncio.apply()
 
 
 # Родительский класс с объявлением всех стартовых для работы методов
-class Main:
+class Main(ABC):
     """
     Основной класс бота со всем нужным функционалом и инициализированными модулями (в __init__)
 
@@ -42,9 +43,7 @@ class Main:
 
     admins: tuple[int]  # Список UserID админов.
 
-    delete_queue: Optional[asyncio.Queue] = None  # Используется для автоудаления сообщений
-    subscribed_chats: dict = {}  # Подписанные чаты на автоудаление сообщений
-    need_delete: dict = {}
+    chats_data: dict = {}
 
     # Объявляем наличие функциональных модулей, к которым у нас будет доступно обращение.
     example_functions: ExampleFuncs
@@ -54,6 +53,7 @@ class Main:
         # При создании новых функциональных модулей, добавлять инициализацию в текущий конструктор
         self.example_functions = ExampleFuncs(self)
         self.battle = Battle(self)  # Пример построенной цепочки классов: бой -> подземелье и т.д. Battle -> Dungeon
+        self.chat_settings = ChatSettings(self)
 
     # Индивидуальная генерация клавиатуры для отдельной платформы
     @abstractmethod
@@ -65,7 +65,7 @@ class Main:
         keyboard = Keyboard()
 
         for attribute in dir(keyboard):
-            if attribute.startswith("__"):
+            if attribute.startswith("_"):
                 continue
 
             value = getattr(keyboard, attribute)
@@ -161,117 +161,10 @@ class Main:
 
         return False, False
 
-    @staticmethod
-    async def execute_method(event: Event,
-                             command_data: dict) -> Optional[Message]:
-        """
-        Вызов метода с переданными параметрами
-
-        :param event: Объект Event of platform
-        :param command_data: Данные команды в виде dict из CommandClass
-        """
-        method = command_data['func']  # Получаем метод, который будет выполняться
-
-        # Вызываем метод на экземпляре класса
-        if 'extra_params' in command_data:
-            message = await method(event, command_data['extra_params'])
-        else:
-            message = await method(event)
-
-        return message
-
-    async def execute_command(
-            self,
-            event: Event,
-            command_dict: dict,
-            log: str
-    ):
-        """
-        Выполнение команд
-
-        :param event: Объект Event of platform
-        :param command_dict: Данные команды в виде dict из CommandClass
-        :param log: Путь к файлу, куда писать лог
-        """
-
-        message: Optional[Union[Message, list[Message]]] = None
-        event.chat = await self.get_chat_settings(
-            chat_id=event.chat_id,
-            thread_id=event.thread_id,
-            is_forum=event.is_forum
-        )
-
-        need_remove_lock = False  # Показывает необходимость снимать лок после завершения функции
-
-        try:
-            if 'lock' in command_dict:
-
-                if event.chat_id in command_dict['lock'].queue:
-                    message = Message(
-                        event.chat_id,
-                        command_dict['lock'].message
-                    )
-
-                else:
-                    command_dict['lock'].queue[event.chat_id] = True
-                    need_remove_lock = True
-
-                    message = await self.execute_method(event, command_dict)
-
-            else:
-                message = await self.execute_method(event, command_dict)
-
-            if message:
-                if type(message) == list:
-
-                    sub_message: Message
-                    for sub_message in message:
-                        if type(sub_message) != Message:
-                            continue
-
-                        if event.chat_id == sub_message.chat_id:
-                            sub_message.chat = event.chat
-
-                        await self.send_message(sub_message)
-                        await asyncio.sleep(0.5)
-
-                else:
-                    if type(message) == Message:
-                        if event.chat_id == message.chat_id:
-                            message.chat = event.chat
-
-                        await self.send_message(message)
-
-        except Exception as e:
-            result = e
-            if message is not None:
-                if type(message) == list:
-                    result = " | ".join(str([i.__dict__ for i in message]))
-                else:
-                    result = message.__dict__
-
-            log_message = (
-                f"EventDict: {event.__dict__}\n"
-                f"MessageDict: {result}\n"
-            )
-            await self.write_log(
-                log,
-                log_message
-            )
-
-        finally:
-            if need_remove_lock and event.chat_id in command_dict['lock'].queue:
-                command_dict['lock'].queue.pop(event.chat_id)
-
     async def on_startup(self):  # Асинхронная функция, выполняющаяся перед стартом получения апдейтов
-        self.delete_queue = asyncio.Queue()
         await self.mysql_connect()
         await check_migrations(self.db)  # Выполняем миграции
         await self.get_keyboards()
-
-        task = asyncio.create_task(self.check_for_delete())
-        task = asyncio.create_task(self.delete_messages())
-        task = asyncio.create_task(self.get_subscribed_chats())
 
         if product_server:
             for admin in self.admins:
@@ -286,54 +179,6 @@ class Main:
     # Асинхронная функция, выполняющаяся после прекращения получения апдейтов
     async def on_shutdown(self):
         await self.mysql_disconnect()
-
-    async def get_chat_settings(self, chat_id: int, db: DBClass = None, thread_id=None, is_forum=None) -> Chat:
-        if not await self.is_chat(chat_id):
-            return Chat(
-                chat_id,
-                thread_id=None,
-                delete_message=-1,
-                start_date=datetime.now()
-            )
-
-        if db is None:
-            db = self.db
-
-        chat = await db.execute(
-            """
-                SELECT * FROM chat 
-                    WHERE chat_id = %s
-            """,
-            (chat_id, ),
-            fetchone=True
-        )
-        if chat is None:
-            await db.execute(
-                """
-                    INSERT INTO chat SET 
-                        chat_id = %s, 
-                        start_date = %s
-                """,
-                ( chat_id, datetime.now() ),
-                commit=True
-            )
-            chat = await db.execute("SELECT * FROM chat WHERE chat_id = %s", (chat_id,), fetchone=True)
-
-        if is_forum:
-            if chat['thread_id'] != thread_id:
-                await db.execute("UPDATE chat SET thread_id = %s WHERE chat_id = %s", (thread_id, chat_id), commit=True)
-                chat['thread_id'] = thread_id
-
-        elif is_forum is False and chat['thread_id']:
-            await db.execute("UPDATE chat SET thread_id = NULL WHERE chat_id = %s", (chat_id,), commit=True)
-            chat['thread_id'] = None
-
-        return Chat(
-            chat_id,
-            thread_id=chat['thread_id'],
-            delete_message=chat['delete_message'],
-            start_date=chat['start_date']
-        )
 
     @abstractmethod  # Отправляем сообщение
     async def send_message(self, message: Message): ...
@@ -453,75 +298,6 @@ class Main:
             # Неизвестная пока для нас ошибка.
             # Может нужно лог завести, чтобы все возникающие ошибки обработать
             return 'unknown'
-
-    # Добавляем сообщение в очередь на удаление
-    async def message_for_delete(self, message_id, chat_id):
-        await self.delete_queue.put(
-            {'chat_id': chat_id,
-             'message': message_id,
-             'platform': self.platform,
-             'date': datetime.now()}
-        )
-
-    # Поток раз в 1.5 минут получает чаты, подписанные на удаление
-    async def get_subscribed_chats(self):
-        while True:
-            try:
-                rows = await self.db.execute(
-                    "SELECT delete_message, chat_id FROM chat WHERE delete_message != -1",
-                    fetchall=True
-                )
-                self.subscribed_chats.clear()
-                for row in rows:
-                    chat_id = row['chat_id']
-                    time = row['delete_message']
-                    self.subscribed_chats[chat_id] = time
-
-                del rows
-                await asyncio.sleep(100)
-
-            except CancelledError:
-                raise
-
-            except:
-                await Main.write_log('delete_message_log', traceback.format_exc())
-
-    # Поток принимает отправленные ботом сообщения, и смотрит, подписана ли беседа на удаление сообщений
-    # Если подписана, значит отправляет в очередь на удаление
-    async def check_for_delete(self):
-        while True:
-            try:
-                event = await self.delete_queue.get()  # comment event
-                chat_id = event['chat_id']
-                if chat_id in self.subscribed_chats:
-                    event['time'] = self.subscribed_chats.copy()[chat_id]
-                    message_id = event['message']
-                    self.need_delete[message_id] = event
-
-            except CancelledError:
-                raise
-
-            except:
-                await Main.write_log('delete_message_log', traceback.format_exc())
-
-    # Поток удаляет сообщения по истечению нужного времени
-    async def delete_messages(self):
-        while True:
-            try:
-                for key in list(self.need_delete):
-                    event = self.need_delete[key]
-                    message_id = event['message']
-                    if datetime.now() - timedelta(minutes=event['time']) >= event['date']:
-                        await self.delete_message(Message(chat_id=event['chat_id'], message_id=message_id, message=''))
-                        self.need_delete.pop(message_id)
-
-                await asyncio.sleep(30)
-
-            except CancelledError:
-                raise
-
-            except:
-                await Main.write_log('delete_message_log', traceback.format_exc())
 
     @staticmethod
     async def download_file(url: str) -> Union[bytes, bool]:

@@ -1,8 +1,5 @@
 from typing import Optional, Union
 
-from vkbottle import Keyboard as VkKeyboard
-from aiogram.types import InlineKeyboardMarkup
-
 from bot.models.chat import Chat
 
 class Message:
@@ -13,7 +10,7 @@ class Message:
             chat: Optional[Chat] = None,
             thread_id: Optional[int] = None,
             attachment: Optional[str] = None,
-            keyboard: Union[list, InlineKeyboardMarkup, VkKeyboard, None] = None,
+            keyboard: Union[list, None] = None,
             ping: bool = False,
             message_type: str = "text",
             need_log: bool = True,

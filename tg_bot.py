@@ -6,10 +6,11 @@ import traceback
 from datetime import datetime
 from typing import Union
 
-from aiogram import types
-from aiogram.types import ContentTypes, Message
-from bot.models.import_all_models import Event, Message as ToadbotMessage
+from aiogram import F
+from aiogram.types import Message, CallbackQuery, PreCheckoutQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils import deep_linking
 
+from bot.models.platform_event import Event
 from settings import platform_tokens
 from bot.classes.TgClass import TgClass
 
@@ -29,12 +30,11 @@ need_command_log = False
 
 
 # CALLBACK COMMANDS
-@bot.dp.callback_query_handler()
-async def callback_menu(query: types.CallbackQuery):
+@bot.dp.callback_query()
+async def callback_menu(query: CallbackQuery):
     try:
-        start_time = datetime.now()
         message = query.data.lower()
-        chat_id = query.message.chat.id
+        peer_id = query.message.chat.id
         user = query.from_user.id
 
         extra: [dict, None] = None
@@ -54,34 +54,39 @@ async def callback_menu(query: types.CallbackQuery):
             message = message.replace('ё', 'е')
 
             if with_params:
-                event, extra = await bot.check_event_in_commands(
+                event, extra = await bot.execute_command_logic.check_event_in_commands(
                     message, command_list, with_params=True,
                     clean_event_text=clean_event_text)
 
             else:
-                event, extra = await bot.check_event_in_commands(message, command_list)
+                event, extra = await bot.execute_command_logic.check_event_in_commands(message, command_list)
 
             if event:
                 event.user_id = user
-                event.chat_id = chat_id
+                event.peer_id = peer_id
                 event.username = query.from_user.username
                 event.message_id = query.message.message_id
                 event.callback_id = query.id
+
+                if query.message.chat.is_forum is None:
+                    event.is_forum = False
+
+                else:
+                    event.is_forum = query.message.chat.is_forum
+                    if (
+                        query.message.reply_to_message and
+                        query.message.reply_to_message.is_topic_message
+                    ):
+                        event.thread_id = query.message.message_thread_id
+
                 break
 
         # по идее, всё, что ниже, до except, можно перенести в блок выше до break
         if event:
-            await bot.execute_command(event, extra, 'TG_CALLBACK_MESSAGES')
+            await toadbot.execute_command_logic.execute_command(event, extra, 'TG_CALLBACK_MESSAGES')
 
-        if need_debug_log:
-            log_str = str(datetime.now() - start_time) + ' ||| ' + str(query)
-            await bot.write_log('tg_callback_command_log', log_str)
-
-    except:
-        await bot.write_log(
-            'TG_CALLBACK_MESSAGES',
-            f'{str(query)}\n{traceback.format_exc()}'
-        )
+    except Exception as e:
+        await toadbot.write_log('TG_CALLBACK_MESSAGES', f'{str(query)}\n{e}')
 
 
 # TEXT COMMANDS
@@ -199,7 +204,7 @@ async def text_menu(platform_event: Message):
                 event.message_id = message_id
                 event.is_bot = platform_event.from_user.is_bot
 
-                if user in (1087968824, 777000):
+                if user in (1087968824, 777000):  # UserID анонимного аккаунта или канала
                     event.is_bot = True
 
                 event.destination = await bot.get_destination(event.param, reply_from)
