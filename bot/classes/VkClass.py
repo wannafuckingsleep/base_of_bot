@@ -7,6 +7,7 @@ from vkbottle.bot import Bot
 import re
 
 from bot.classes.commands import Commands
+from bot.objects.emojies import set_platform
 from settings import product_server, platform_tokens
 from re import findall
 from bot.models.message import Message
@@ -42,6 +43,7 @@ class VkClass(Commands):
             self.bot_commands[command_type] = self.bot_commands[command_type] + specific_bot_commands[command_type]
 
     def __init__(self):
+        set_platform(self.platform)
         self.distribute_commands()
         self.distribute_platform_commands()
         logger.remove()
@@ -138,10 +140,6 @@ class VkClass(Commands):
 
             if msg[0].error:
                 return await self.write_msg_errors(msg[0].error.code)
-
-            if message.need_delete and message.chat_id in self.subscribed_chats:  # TODO вынести в общий метод
-                message_id = await self.get_message_id(msg)
-                await self.message_for_delete(message_id=message_id, chat_id=message.chat_id)
 
             return msg
 

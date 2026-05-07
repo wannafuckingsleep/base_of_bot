@@ -83,20 +83,14 @@ async def callback_menu(query: CallbackQuery):
 
         # по идее, всё, что ниже, до except, можно перенести в блок выше до break
         if event:
-            await toadbot.execute_command_logic.execute_command(event, extra, 'TG_CALLBACK_MESSAGES')
+            await bot.execute_command_logic.execute_command(event, extra, 'TG_CALLBACK_MESSAGES')
 
     except Exception as e:
-        await toadbot.write_log('TG_CALLBACK_MESSAGES', f'{str(query)}\n{e}')
+        await bot.write_log('TG_CALLBACK_MESSAGES', f'{str(query)}\n{e}')
 
 
 # TEXT COMMANDS
-@bot.dp.message_handler(
-    content_types=ContentTypes.TEXT &
-                  ContentTypes.ANIMATION &
-                  ContentTypes.PHOTO &
-                  ContentTypes.MIGRATE_TO_CHAT_ID &
-                  ContentTypes.MIGRATE_FROM_CHAT_ID
-)
+@bot.dp.message()
 async def text_menu(platform_event: Message):
     try:
         start_time = datetime.now()
@@ -162,14 +156,15 @@ async def text_menu(platform_event: Message):
                     need_check = True
                     username = platform_event.from_user.username
                     # заменить на проверку username бота из bot_info
-                    platform_event.text = re.sub(
-                        '(@toadbot |@toadbot|@testtoadbot |@testtoadbot)', '',
+                    normalized_text = re.sub(
+                        '(@toadbot |@toadbot|@testtoadbot |@testtoadbot)',
+                        '',
                         platform_event.text,
                         flags=re.I
                     )
 
-                    message = platform_event.text.lower()
-                    clean_event_text = platform_event.text
+                    message = normalized_text.lower()
+                    clean_event_text = normalized_text
                     clean_event_text = re.sub('жабёнку', 'жабенку', clean_event_text, flags=re.I)
                     clean_event_text = re.sub('жабёнка', 'жабенка', clean_event_text, flags=re.I)
                     clean_event_text = re.sub('партнёру', 'партнеру', clean_event_text, flags=re.I)
@@ -225,7 +220,7 @@ async def text_menu(platform_event: Message):
                 break
 
         if event:
-            await bot.execute_command(event, extra, 'TG_TEXT_MESSAGES')
+            await bot.execute_command_logic.execute_command(event, extra, 'TG_TEXT_MESSAGES')
 
         # ______________________________________________________________________ #
 

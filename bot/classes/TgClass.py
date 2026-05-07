@@ -1,16 +1,22 @@
-# example of platform class based on TG
 import asyncio
 import traceback
-from typing import Optional
+from typing import Optional, Union
 
-from aiogram import Bot, Dispatcher, executor, types, md
-from aiogram.utils import exceptions
+from aiohttp import web
+from aiogram import Bot, Dispatcher, exceptions
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
+from aiogram.utils import markdown as md
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
 from bot.classes.commands import Commands
-from settings import platform_tokens, product_server
 from bot.models.import_all_models import Event, Message
-
+from bot.objects.emojies import set_platform
 from bot.utils.images import Images
+from bot.utils.keyboard.button import *
+from settings import platform_tokens, product_server
 
 
 class TgClass(Commands):
@@ -31,11 +37,15 @@ class TgClass(Commands):
 
     def __init__(self):
         super().__init__()  # Вызов конструктора класса родителя
+        set_platform(self.platform)
         product_index = 0 if product_server else 1
         self.webhook_port = self.webhook_port[product_index]
         self.base = self.base[product_index]
-        self.bot = Bot(platform_tokens['tg'], parse_mode=types.ParseMode.HTML)
-        self.dp = Dispatcher(self.bot, run_tasks_by_default=True)
+        self.bot = Bot(
+            token=platform_tokens["tg"],
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        )
+        self.dp = Dispatcher()
         self.distribute_commands()
         self.distribute_platform_commands()
 
@@ -53,69 +63,90 @@ class TgClass(Commands):
             self.bot_commands[command_type] = self.bot_commands[command_type] + specific_bot_commands[command_type]
 
     def start_receiving_updates(self):  # Старт получения апдейтов
-        async def on_startup(dp):  # Общая функция, срабатывающая при запуске получения апдейтов
+        async def on_startup(bot: Bot):
             if product_server:
-                await on_startup_webhook(dp)
-
+                allowed_updates = ["message", "callback_query"]
+                await bot.set_webhook(self.webhook_url, max_connections=100, allowed_updates=allowed_updates)
             await self.on_startup()
 
-        async def on_startup_webhook(dp):  # Общая функция, срабатывающая при запуске вебхука
-            allowed_updates = ["message", "callback_query"]
-            await self.bot.set_webhook(self.webhook_url, max_connections=100, allowed_updates=allowed_updates)
-
-        async def on_shutdown(dp):
-            # Remove webhook (not acceptable in some cases)
-            await self.bot.delete_webhook()
-
-            # Close DB connection (if used)
-            await dp.storage.close()
-            await dp.storage.wait_closed()
+        async def on_shutdown(bot: Bot):
+            if product_server:
+                await bot.delete_webhook()
             await self.on_shutdown()
 
-        if product_server:
-            print('start webhook')
-            executor.start_webhook(
-                dispatcher=self.dp,
-                webhook_path=self.webhook_path,
-                on_startup=on_startup,
-                on_shutdown=on_shutdown,
-                host='localhost',
-                port=self.webhook_port,
-                skip_updates=True,
-            )
+        async def run():
+            self.dp.startup.register(on_startup)
+            self.dp.shutdown.register(on_shutdown)
+            await self.bot.delete_webhook(drop_pending_updates=True)
 
-        else:
-            print('start polling')
-            executor.start_polling(self.dp, on_startup=on_startup, on_shutdown=on_shutdown, skip_updates=True)
+            if product_server:
+                print("start webhook")
+                app = web.Application()
+                SimpleRequestHandler(dispatcher=self.dp, bot=self.bot).register(app, path=self.webhook_path)
+                setup_application(app, self.dp, bot=self.bot)
 
-    async def generate_keyboard(self, buttons):  # Генерация клавиатуры
+                runner = web.AppRunner(app)
+                await runner.setup()
+                site = web.TCPSite(runner, host="localhost", port=self.webhook_port)
+                await site.start()
+                await asyncio.Event().wait()
+            else:
+                print("start polling")
+                await self.dp.start_polling(self.bot, allowed_updates=self.dp.resolve_used_update_types())
+
+        asyncio.run(run())
+
+    async def generate_keyboard(self, buttons: list[Union[BaseButton, InlineButton]]) -> Optional[InlineKeyboardMarkup]:
+        """
+        Генерирует клавиатуру. Для создания списка используются инструменты в bot/utils/keyboard.py
+
+        :param buttons: - list of buttons
+
+        :return: готовый объект клавиатуры
+        """
         if buttons is None or len(buttons) == 0:
             return None
 
         # Инициируем клавиатуру
-        keyboard = types.InlineKeyboardMarkup()
+        builder = InlineKeyboardBuilder()
+        row = []
+
         for button in buttons:  # Обрабатываем все кнопки
-            if button['text'] in ('line', 'tg_line'):
-                keyboard.row()
+            if isinstance(button, (EmptyLine, EmptyLineTG)):
+                builder.row(*row)
+                row = []
                 continue
 
-            if button['text'] == 'vk_line':
+            if isinstance(button, (EmptyLineVK, CallbackButtonVK)):
                 continue
 
-            if 'type' in button and button['type'] in ('callback', 'tg_callback'):
-                keyboard.insert(
-                    types.InlineKeyboardButton(
-                        text=button['visible_text'],
-                        callback_data=button['text'])
-                )
-                continue
+            if isinstance(button, (CallbackButton, CallbackButtonTG)):
+                row.append(InlineKeyboardButton(
+                    text=button.visible_text,
+                    callback_data=button.text
+                ))
+            elif isinstance(button, AddBotButton):
+                # url = await deep_linking.get_startgroup_link('help')
+                bot_me = await self.bot.get_me()
+                url = f"https://t.me/{bot_me.username}?startgroup=help"
+                row.append(InlineKeyboardButton(
+                    text=button.visible_text,
+                    url=url
+                ))
+            elif isinstance(button, LinkButton):
+                row.append(InlineKeyboardButton(
+                    text=button.visible_text,
+                    url=button.link
+                ))
+            else:
+                row.append(InlineKeyboardButton(
+                    text=button.visible_text,
+                    switch_inline_query_current_chat=button.text
+                ))
 
-            keyboard.insert(
-                types.InlineKeyboardButton(
-                    text=button['visible_text'],
-                    switch_inline_query_current_chat=button['text']
-                )
-            )
+        if row:
+            builder.row(*row)
+        keyboard = builder.as_markup()
 
         return keyboard
 
@@ -149,7 +180,7 @@ class TgClass(Commands):
                     attachment_list = []
                     for attachment in message.attachment:
                         attachment_list.append(
-                            types.InputMediaPhoto(
+                            InputMediaPhoto(
                                 media=attachment,
                             )
                         )
@@ -177,7 +208,7 @@ class TgClass(Commands):
                                 reply_to_message_id=message.reply_to_message_id
                             )
 
-                    except exceptions.BadRequest as err:
+                    except exceptions.TelegramBadRequest as err:
                         if "{0}".format(err) == "Can't use file of type animation as photo":
                             msg = await self.bot.send_animation(
                                 message.chat_id,
@@ -198,21 +229,17 @@ class TgClass(Commands):
                         reply_to_message_id=message.reply_to_message_id
                     )
 
-            if message.need_delete and message.chat_id in self.subscribed_chats:  # TODO вынести в общий метод
-                message_id = await self.get_message_id(msg)
-                await self.message_for_delete(message_id=message_id, chat_id=message.chat_id)
-
             if msg:
                 return msg
 
-        except exceptions.RetryAfter as e:
+        except exceptions.TelegramRetryAfter as e:
             async def recursive_call(exception):
-                await asyncio.sleep(exception.timeout)
+                await asyncio.sleep(exception.retry_after)
                 await self.send_message(message)  # Recursive call
 
             asyncio.create_task(recursive_call(e))
 
-        except exceptions.MigrateToChat as e:
+        except exceptions.TelegramMigrateToChat as e:
             await self.chat_migrate(message.chat_id, e.migrate_to_chat_id)
 
             async def recursive_call():
@@ -221,10 +248,10 @@ class TgClass(Commands):
 
             asyncio.create_task(recursive_call())
 
-        except (exceptions.BotKicked, exceptions.Unauthorized, exceptions.ChatNotFound):
+        except (exceptions.TelegramForbiddenError, exceptions.TelegramNotFound):
             pass
 
-        except exceptions.BadRequest as err:
+        except exceptions.TelegramBadRequest as err:
             error = "{0}".format(err)
 
             if error in (
@@ -243,7 +270,7 @@ class TgClass(Commands):
                 if send_long_message:
                     pass
 
-        except exceptions.MessageIsTooLong as e:
+        except exceptions.TelegramBadRequest:
             pass
 
         except Exception as err:  # TODO Убрать дублирующийся код (есть ещё в вк), вынести в общий метод
@@ -266,10 +293,9 @@ class TgClass(Commands):
             await self.bot.delete_message(message.chat_id, message.message_id)
 
         except (
-                exceptions.BotKicked,
-                exceptions.Unauthorized,
-                exceptions.ChatNotFound,
-                exceptions.MessageToDeleteNotFound
+                exceptions.TelegramForbiddenError,
+                exceptions.TelegramNotFound,
+                exceptions.TelegramBadRequest
         ):
             pass
 
@@ -300,19 +326,21 @@ class TgClass(Commands):
                     reply_markup=message.keyboard
                 )
 
-        except exceptions.RetryAfter as e:
+        except exceptions.TelegramRetryAfter as e:
             async def recursive_call(exception):
-                await asyncio.sleep(exception.timeout)
+                await asyncio.sleep(exception.retry_after)
                 # Recursive call
                 await self.edit_message(message)
 
             asyncio.create_task(recursive_call(e))
 
-        except (exceptions.MessageNotModified, exceptions.MessageToEditNotFound):
-            pass
-
-        except exceptions.MessageIsTooLong as e:
-            return "TooLongMessage"
+        except exceptions.TelegramBadRequest as e:
+            error = str(e).lower()
+            if "message is not modified" in error or "message to edit not found" in error:
+                return
+            if "too long" in error:
+                return "TooLongMessage"
+            raise
 
         except Exception:
 

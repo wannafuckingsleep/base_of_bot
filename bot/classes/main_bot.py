@@ -11,6 +11,7 @@ import aiofiles
 
 from bot.classes.battles.battle import Battle
 from bot.classes.chat_settings.chat_settings_logic import ChatSettings
+from bot.classes.execute.execute_commands import ExecuteCommand
 from bot.utils.keyboard.keyboard import Keyboard
 
 from typing import Union, Optional
@@ -47,6 +48,7 @@ class Main(ABC):
 
     # Объявляем наличие функциональных модулей, к которым у нас будет доступно обращение.
     example_functions: ExampleFuncs
+    execute_command_logic: ExecuteCommand
     battle: Battle
 
     def __init__(self):
@@ -54,6 +56,7 @@ class Main(ABC):
         self.example_functions = ExampleFuncs(self)
         self.battle = Battle(self)  # Пример построенной цепочки классов: бой -> подземелье и т.д. Battle -> Dungeon
         self.chat_settings = ChatSettings(self)
+        self.execute_command_logic = ExecuteCommand(self)
 
     # Индивидуальная генерация клавиатуры для отдельной платформы
     @abstractmethod

@@ -1,57 +1,85 @@
-import typing
-from typing import Union, Optional
-from enum import Enum
+from dataclasses import dataclass
 from bot.utils.keyboard.colors import Colors
 
 
-class ButtonType(str, Enum):
+@dataclass
+class BaseButton:
     """
-    :cvar CALLBACK: Кнопка с вызовом callback.
-    :cvar TEXT: Кнопка с текстом.
-    :cvar ADD_BOT: Кнопка добавления бота.
-    :cvar LINK: Кнопка со ссылкой.
+    Базовый класс для кнопок.
     """
-    CALLBACK = "callback"
-    TEXT = "text"
-    ADD_BOT = "add_bot"
-    LINK = "link"
-
-    VK_CALLBACK = "vk_callback"
-    TG_CALLBACK = "tg_callback"
+    visible_text: str = None
+    color: str = Colors.blue
 
 
-def button(
-        text: str = None,
-        visible_text: Union[str, bool] = None,
-        color: str = Colors.blue,
-        button_type: ButtonType = ButtonType.TEXT,
-        link: Optional[str] = None
-) -> dict:
-
+@dataclass
+class CallbackButton(BaseButton):
     """
-    Кнопка для генерации клавиатуры.
-    Если нужна новая строка, вызывается без параметров.
-
-    :param text: Задается текст
-    :param visible_text: Видимый текст
-    :param color: use Colors.*red*
-    :param button_type: тип кнопки. Object of ButtonType.
-    :param link: Ссылка, если ButtonType=LINK.
-
-    :return: Словарь для генерации в клавиатуру для платформы
+    Базовый класс для колбэк кнопок.
     """
-    if not any((text, visible_text)):
-        return {"text": "line"}
+    text: str = None
 
-    if visible_text is None:
-        visible_text = text
+    def __post_init__(self):
+        if self.visible_text is None:
+            self.visible_text = self.text
 
-    current_button = {
-        "text": text,
-        "visible_text": visible_text,
-        "color": color,
-        "type": button_type,
-        "link": link
-    }
 
-    return current_button
+@dataclass
+class CallbackButtonTG(CallbackButton):
+    """
+    Класс для TG колбэк кнопок.
+    """
+
+
+@dataclass
+class CallbackButtonVK(CallbackButton):
+    """
+    Класс для VK колбэк кнопок.
+    """
+
+
+@dataclass
+class InlineButton(BaseButton):
+    """
+    Класс для текстовых кнопок.
+    """
+    text: str = None
+
+    def __post_init__(self):
+        if self.visible_text is None:
+            self.visible_text = self.text
+
+
+@dataclass
+class AddBotButton(BaseButton):
+    """
+    Класс для кнопок добавить бота.
+    """
+
+
+@dataclass
+class LinkButton(BaseButton):
+    """
+    Класс для кнопок со ссылками.
+    """
+    link: str = None
+
+
+@dataclass
+class EmptyLine(BaseButton):
+    """
+    Кнопка с пустой строкой.
+    """
+
+
+@dataclass
+class EmptyLineTG(BaseButton):
+    """
+    Кнопка с пустой строкой только в ТГ.
+    """
+
+
+@dataclass
+class EmptyLineVK(BaseButton):
+    """
+    Кнопка с пустой строкой только в ВК.
+    """

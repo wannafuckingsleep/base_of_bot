@@ -1,11 +1,9 @@
-import asyncio
 from asyncio import CancelledError
 from datetime import datetime
 from typing import Optional, Union
 
 from bot.objects.base_module import BaseModule
 from bot.models.import_all_models import Message, Event
-from bot.utils.keyboard.button import ButtonType, button
 
 
 class ExecuteCommand(BaseModule):
@@ -116,7 +114,6 @@ class ExecuteCommand(BaseModule):
         event.chat = await self.bot.chat_settings.get(
             peer_id=event.chat_id,
             thread_id=event.thread_id,
-            is_forum=event.is_forum
         )
 
         need_remove_lock = False  # Показывает необходимость снимать лок после завершения функции

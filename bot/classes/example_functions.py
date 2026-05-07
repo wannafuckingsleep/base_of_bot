@@ -2,6 +2,7 @@ import nest_asyncio
 
 from bot.models.import_all_models import *
 from bot.objects.base_module import BaseModule
+from bot.objects.emojies import Emoji
 
 nest_asyncio.apply()
 
@@ -23,7 +24,9 @@ class ExampleFuncs(BaseModule):
         return Message(
             event.chat_id,
             await self.bot.bold("message from user_id: ") + str(event.user_id) + "\n" +
-            await self.bot.bold("this is extra_param: ") + extra
+            await self.bot.bold("this is extra_param: ") + extra + "\n\n" +
+
+            f"test emoji: {Emoji.toad}"
         )
 
     async def example_func_with_params(self, event: Event) -> Message:

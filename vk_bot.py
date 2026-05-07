@@ -95,7 +95,7 @@ async def callback_menu(platform_event: GroupTypes.MessageEvent):
                     break
 
             if event:
-                await bot.execute_command(event, extra, 'VK_CALLBACK_MESSAGES')
+                await bot.execute_command_logic.execute_command(event, extra, 'VK_CALLBACK_MESSAGES')
 
     except:
         await VkClass.write_log('VK_CALLBACK_MESSAGES', f'{str(platform_event)}\n{traceback.format_exc()}')
@@ -195,7 +195,7 @@ async def message_menu(platform_event: Message):
                     break
 
             if event:
-                await bot.execute_command(event, extra, 'VK_TEXT_MESSAGES')
+                await bot.execute_command_logic.execute_command(event, extra, 'VK_TEXT_MESSAGES')
 
             if platform_event.from_id in bot.admins:  # commands for admins
                 ...
