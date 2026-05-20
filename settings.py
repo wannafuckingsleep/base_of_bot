@@ -13,6 +13,7 @@ base_charset = "utf8mb4"
 
 # local test
 product_server = False
+webhook_working = False
 path_dir = os.path.dirname(os.path.abspath(__file__))
 log_dir = path_dir + '/logs'
 if not os.path.isdir(path_dir + "/logs"):

@@ -6,17 +6,17 @@ from aiohttp import web
 from aiogram import Bot, Dispatcher, exceptions
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto, BotCommand
 from aiogram.utils import markdown as md
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
 from bot.classes.commands import Commands
 from bot.models.import_all_models import Event, Message
-from bot.objects.emojies import set_platform
+from bot.objects.emojies import set_platform, Emoji
 from bot.utils.images import Images
 from bot.utils.keyboard.button import *
-from settings import platform_tokens, product_server
+from settings import platform_tokens, product_server, webhook_working
 
 
 class TgClass(Commands):
@@ -64,13 +64,13 @@ class TgClass(Commands):
 
     def start_receiving_updates(self):  # Старт получения апдейтов
         async def on_startup(bot: Bot):
-            if product_server:
+            if webhook_working:
                 allowed_updates = ["message", "callback_query"]
                 await bot.set_webhook(self.webhook_url, max_connections=100, allowed_updates=allowed_updates)
             await self.on_startup()
 
         async def on_shutdown(bot: Bot):
-            if product_server:
+            if webhook_working:
                 await bot.delete_webhook()
             await self.on_shutdown()
 
@@ -79,7 +79,7 @@ class TgClass(Commands):
             self.dp.shutdown.register(on_shutdown)
             await self.bot.delete_webhook(drop_pending_updates=True)
 
-            if product_server:
+            if webhook_working:
                 print("start webhook")
                 app = web.Application()
                 SimpleRequestHandler(dispatcher=self.dp, bot=self.bot).register(app, path=self.webhook_path)
@@ -95,6 +95,17 @@ class TgClass(Commands):
                 await self.dp.start_polling(self.bot, allowed_updates=self.dp.resolve_used_update_types())
 
         asyncio.run(run())
+
+    @staticmethod
+    async def set_default_commands(bot: Bot):
+        """
+        Устанавливает быстрые команды через /: /start, /help ...
+        """
+        commands = [
+            BotCommand(command="test", description=f"{Emoji.info}" + "Тестовая регистрация команды"),
+            BotCommand(command="public_offer", description="Публичная оферта"),
+        ]
+        await bot.set_my_commands(commands)
 
     async def generate_keyboard(self, buttons: list[Union[BaseButton, InlineButton]]) -> Optional[InlineKeyboardMarkup]:
         """
