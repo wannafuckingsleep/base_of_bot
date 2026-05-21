@@ -20,6 +20,7 @@ import aiohttp
 from settings import product_server, log_dir
 from bot.modules.migrations import check_migrations
 from bot.utils.images import Images
+from bot.objects.links.links import Links
 from bot.classes.DBClass import DBClass
 
 from bot.models.import_all_models import *
@@ -35,10 +36,12 @@ class Main(ABC):
 
     :cvar keyboard: Keyboard object.
     :cvar db: DB object.
+    :cvar links: Links object.
     """
 
     keyboard: Keyboard  # Класс с клавиатурами бота
     db: Optional[DBClass] = None  # БД
+    links: Links
     bot_commands: dict  # Словарь с коммандами бота
     image: Images
 
@@ -53,6 +56,7 @@ class Main(ABC):
 
     def __init__(self):
         # При создании новых функциональных модулей, добавлять инициализацию в текущий конструктор
+        self.links = Links(self.platform)
         self.example_functions = ExampleFuncs(self)
         self.battle = Battle(self)  # Пример построенной цепочки классов: бой -> подземелье и т.д. Battle -> Dungeon
         self.chat_settings = ChatSettings(self)
