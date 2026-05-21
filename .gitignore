@@ -6,3 +6,5 @@ test.py
 /logs/
 settings.py
 *.lock
+*.pyc
+.DS_Store
